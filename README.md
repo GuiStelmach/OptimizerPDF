@@ -2,6 +2,8 @@
 
 Aplicação web de arquivo único para **organizar imagens e gerar um PDF otimizado**, ajustado automaticamente a um limite de tamanho. Funciona 100% offline, sem bibliotecas e sem enviar nenhum dado a servidores.
 
+**Teste agora:** [abrir o OptimizerPDF no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
+
 **Versão atual:** 1.5.0  
 **Autor original:** Guilherme Medeiros Stelmach (Gui Stelmach)
 
