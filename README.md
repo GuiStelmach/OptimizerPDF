@@ -42,6 +42,24 @@ O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem 
 - Otimização de PDFs existentes com comparação antes/depois e meta de tamanho.
 - Piso de leitura para não degradar excessivamente arquivos que precisam permanecer legíveis.
 - Bloqueio de operações com arquivos incompatíveis e mensagens claras sobre o motivo.
+- Detecção local de imagens repetidas por conteúdo, evitando duplicações desnecessárias no mesmo lote ou na seleção já carregada.
+
+## Detecção de imagens repetidas
+
+Antes de confirmar a importação, o app compara o conteúdo das imagens por hash SHA-256 e verifica se duas imagens possuem os mesmos bytes. Isso significa que a ferramenta identifica duplicatas mesmo quando os arquivos têm nomes diferentes, tamanhos iguais ou datas diferentes, porque a comparação é feita pelo conteúdo real do arquivo, não por metadados.
+
+O fluxo funciona em duas camadas:
+
+1. o app calcula o hash localmente no navegador;
+2. compara esse hash com imagens já carregadas e com as novas do lote atual.
+
+Se encontrar registros equivalentes, abre uma janela de decisão para o usuário escolher entre:
+
+- adicionar todas as imagens, inclusive as repetidas;
+- adicionar somente as imagens exclusivas;
+- cancelar a importação.
+
+Essa funcionalidade reduz o retrabalho, evita itens redundantes no PDF e evita que uma mesma imagem seja incluída várias vezes por acidente, sem depender de rede ou de servidores externos.
 
 ## Como usar
 
