@@ -2,7 +2,7 @@
 Projeto: OptimizerPDF
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 Finalidade: organização de imagens e geração, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
-Versão: 1.9.0 (novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
+Versão: 1.9.1 (nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -12,6 +12,7 @@ Versão: 1.9.0 (novo módulo Otimizar PDF: meta de tamanho, piso de leitura e co
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'" />
 <meta name="author" content="Gui Stelmach" />
 <title>OptimizerPDF</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%2240 12 176 232%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%230B4A5E%22/%3E%3Cstop offset=%221%22 stop-color=%22%230F7490%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%22M72 24H148L204 80V208Q204 232 180 232H76Q52 232 52 208V44Q52 24 72 24Z%22 fill=%22url%28%23g%29%22/%3E%3Cpath d=%22M148 24V62Q148 80 166 80H204Z%22 fill=%22%23fff%22 fill-opacity=%22.35%22/%3E%3Cpath d=%22M86 122L114 152L86 182M170 122L142 152L170 182%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%2214%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M128 118V186%22 stroke=%22%23F2A33A%22 stroke-width=%2212%22 stroke-linecap=%22round%22/%3E%3C/svg%3E" />
 <style>
 /* ==========================================================================
 OptimizerPDF — estilos
@@ -66,7 +67,8 @@ main.wrap{flex:1;width:100%}
 .top{background:linear-gradient(90deg,#0A4A5F,#0C5D77 55%,#0E7490);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.1)}
 .top .bar-top{display:flex;align-items:center;justify-content:space-between;min-height:60px;padding-top:0;padding-bottom:0}
 .top :focus-visible{outline-color:#fff}
-.logo{background:none;border:0;padding:0;font:700 1.2rem/1 var(--font);color:#fff;cursor:pointer}
+.logo{background:none;border:0;padding:0;font:700 1.35rem/1 var(--font);color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:10px}
+.logo .mark{height:42px;width:auto;flex:none}
 .hbtn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:7px 14px;font-weight:var(--fw-medium)}
 .hbtn:hover{background:rgba(255,255,255,.25)}
 /* 4.2 Título da página */
@@ -276,7 +278,7 @@ html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wra
 </style>
 </head>
 <body><a class="skip" href="#workspace">Ir para a área de trabalho</a>
-<header class="top"><div class="wrap bar-top"><button class="logo" id="hdrTitle" type="button"></button><div class="hactions"><!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO. Como não há persistência ao reiniciar a sessão (a lista é apagada ao fechar/recarregar a página), o botão fica invisível e o histórico não é citado na interface nem na ajuda. A função, a tela e o registro em memória foram mantidos como base para uma futura persistência: para reativar, remova a classe "hidden" deste botão e defina HISTORY_ENABLED = true no script. -->
+<header class="top"><div class="wrap bar-top"><button class="logo" id="hdrTitle" type="button"><svg class="mark" viewBox="44 18 168 220" aria-hidden="true" focusable="false"><path d="M72 24H148L204 80V208Q204 232 180 232H76Q52 232 52 208V44Q52 24 72 24Z" fill="#fff"/><path d="M148 24V62Q148 80 166 80H204Z" fill="#9FD3E1"/><path d="M86 122L114 152L86 182M170 122L142 152L170 182" fill="none" stroke="#0E7490" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><path d="M128 118V186" stroke="#F2A33A" stroke-width="12" stroke-linecap="round"/></svg><span class="wm"></span></button><div class="hactions"><!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO. Como não há persistência ao reiniciar a sessão (a lista é apagada ao fechar/recarregar a página), o botão fica invisível e o histórico não é citado na interface nem na ajuda. A função, a tela e o registro em memória foram mantidos como base para uma futura persistência: para reativar, remova a classe "hidden" deste botão e defina HISTORY_ENABLED = true no script. -->
 <button class="hbtn hidden" id="historyBtn" type="button">Histórico<span class="cnt hidden" id="historyCount"></span></button><button class="hbtn" id="helpBtn" type="button">Como usar</button></div></div></header>
 <main class="wrap" id="workspace" tabindex="-1" aria-label="Área de trabalho"><div id="operationBar" class="card hidden" role="status" aria-live="polite"><span id="operationText"></span> <button id="operationCancel" type="button" class="sec">Cancelar operação</button></div>
 <div class="head"><div class="crumb"><button class="back hidden" id="back" type="button">← Ferramentas</button></div><h1 id="brand" class="sr-only"></h1><p class="lead" id="lead"></p></div>
@@ -826,7 +828,7 @@ const meter = $('meter'), meterFill = $('meterFill'), meterText = $('meterText')
 function hl(id, on) { document.querySelectorAll(`[data-id="${id}"]`).forEach((n) => n.classList.toggle('hl', on)); }
 $('brand').textContent = BRAND;
 document.title = BRAND;
-$('hdrTitle').textContent = BRAND;
+$('hdrTitle').querySelector('.wm').textContent = BRAND;
 /* Gerência única dos diálogos: foco, Escape, Tab, isolamento e retorno estável. */
 let modalState=null,modalFocusGuard=false;
 function focusToken(node=document.activeElement){if(!node)return null;if(node.dataset?.focusKey)return{key:node.dataset.focusKey};if(node.id)return{id:node.id};return{node};}

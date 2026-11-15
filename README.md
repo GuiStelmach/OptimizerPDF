@@ -1,10 +1,17 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" alt="OptimizerPDF" width="420">
+  </picture>
+</p>
+
 # OptimizerPDF
 
 Aplicação web offline para organizar imagens, dividir PDFs e reduzir o tamanho de documentos PDF sem depender de serviços externos.
 
 Teste online: [abrir no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
 
-Versão atual: 1.9.0  
+Versão atual: 1.9.1
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 
 ---
@@ -187,8 +194,9 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 
 ```text
 .
-├── index.html   # aplicação completa (HTML, CSS e JavaScript)
+├── index.html   # aplicação completa (HTML, CSS e JavaScript; a marca vai embutida no arquivo)
 ├── README.md    # documentação do projeto
+├── assets/      # identidade visual: logo (claro/escuro) e ícone em SVG, usados no README
 └── LICENSE      # licença MIT
 ```
 
@@ -196,6 +204,7 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 
 | Versão | Mudanças principais |
 |---|---|
+| 1.9.1 | Nova identidade visual com logo e favicon. |
 | 1.9.0 | Novo módulo de otimização de PDF, meta de tamanho, piso de leitura, comparação antes/depois, avisos padronizados e melhor experiência visual. |
 | 1.8.x | Ajustes de acessibilidade, responsividade e downloads. |
 | 1.7.0 | Novo layout com cabeçalho, menu, título da página e cartões. |
