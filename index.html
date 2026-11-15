@@ -1,1336 +1,1386 @@
 <!--
-  Projeto: OptimizerPDF
-  Autor original: Guilherme Medeiros Stelmach (Gui Stelmach)
-  Finalidade: organização de imagens e geração de documentos PDF (100% offline, sem bibliotecas).
-  Versão: 1.5.0 (janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
+Projeto: OptimizerPDF
+Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
+Finalidade: organização de imagens e geração, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
+Versão: 1.9.0 (novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'" />
-  <meta name="author" content="Gui Stelmach" />
-  <title>OptimizerPDF</title>
-  <style>
-    :root {
-      --verde: #3FA110;
-      --escuro: #1E5C2A;
-      --fundo: #EDF0EA;
-      --papel: #fff;
-      --tinta: #1C2620;
-      --suave: #5B675F;
-      --borda: #D3DBD0;
-      --ambar: #B86E00;
-      --erro: #C0392B
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    html,
-    body {
-      margin: 0;
-      min-height: 100%
-    }
-
-    body {
-      font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
-      background: var(--fundo);
-      color: var(--tinta)
-    }
-
-    body.modal {
-      overflow: hidden
-    }
-
-    .hidden {
-      display: none !important
-    }
-
-    .wrap {
-      max-width: 1240px;
-      margin: 0 auto;
-      padding: 0 20px
-    }
-
-    .top {
-      background: var(--papel);
-      border-bottom: 1px solid var(--borda)
-    }
-
-    .top .wrap {
-      display: flex;
-      align-items: baseline;
-      gap: 14px;
-      flex-wrap: wrap;
-      padding-top: 12px;
-      padding-bottom: 12px
-    }
-
-    #brand {
-      margin: 0;
-      font-size: 1.1rem;
-      color: var(--escuro);
-      display: flex;
-      align-items: center;
-      gap: 10px
-    }
-
-    #brand::before {
-      content: "";
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      background: var(--verde)
-    }
-
-    .top span {
-      color: var(--suave);
-      font-size: .9rem
-    }
-
-    main {
-      padding-top: 20px;
-      padding-bottom: 28px
-    }
-
-    .muted {
-      color: var(--suave);
-      font-size: .88rem;
-      margin: 0
-    }
-
-    .zone {
-      max-width: 720px;
-      margin: 36px auto 0;
-      background: var(--papel);
-      border: 2px dashed var(--borda);
-      border-radius: 12px;
-      padding: 32px;
-      text-align: center
-    }
-
-    .zone h2 {
-      margin: 0 0 6px;
-      font-size: 1.4rem
-    }
-
-    .zone .primary {
-      margin: 18px 0 6px
-    }
-
-    .steps {
-      list-style: none;
-      counter-reset: s;
-      display: flex;
-      gap: 18px;
-      justify-content: center;
-      margin: 26px 0 0;
-      padding: 0;
-      text-align: left;
-      font-size: .88rem;
-      color: var(--suave)
-    }
-
-    .steps li {
-      counter-increment: s;
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      max-width: 200px
-    }
-
-    .steps li::before {
-      content: counter(s);
-      flex: none;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: var(--verde);
-      color: #fff;
-      font-weight: 700;
-      font-size: .8rem;
-      display: flex;
-      align-items: center;
-      justify-content: center
-    }
-
-    button {
-      font: inherit;
-      font-weight: 600;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      padding: 9px 16px;
-      cursor: pointer;
-      transition: background-color .15s, border-color .15s
-    }
-
-    button:disabled {
-      opacity: .45;
-      cursor: not-allowed
-    }
-
-    :focus-visible {
-      outline: 3px solid var(--escuro);
-      outline-offset: 2px
-    }
-
-    .primary {
-      background: var(--verde);
-      color: #fff
-    }
-
-    .primary:hover:not(:disabled) {
-      background: var(--escuro)
-    }
-
-    .sec {
-      background: var(--papel);
-      border-color: var(--borda);
-      color: var(--tinta)
-    }
-
-    .sec:hover {
-      border-color: var(--verde)
-    }
-
-    .danger {
-      background: var(--papel);
-      border-color: var(--borda);
-      color: var(--erro)
-    }
-
-    .ico,
-    .rm {
-      background: var(--fundo);
-      color: var(--tinta);
-      padding: 3px 8px;
-      min-width: 28px
-    }
-
-    .ico:hover,
-    .rm:hover {
-      background: var(--borda)
-    }
-
-    .rm {
-      margin-left: auto;
-      color: var(--erro)
-    }
-
-    .work {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
-      gap: 20px;
-      align-items: start
-    }
-
-    .bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 6px
-    }
-
-    .bar p {
-      margin: 0
-    }
-
-    .size.warn {
-      color: var(--erro);
-      font-weight: 700
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-      gap: 10px;
-      margin-top: 10px
-    }
-
-    .pg {
-      grid-column: 1/-1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 6px;
-      color: var(--suave);
-      font-size: .82rem;
-      font-weight: 600
-    }
-
-    .pg::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--borda)
-    }
-
-    .card {
-      position: relative;
-      background: var(--papel);
-      border: 1px solid var(--borda);
-      border-radius: 8px;
-      padding: 6px;
-      cursor: grab
-    }
-
-    .card.drag {
-      opacity: .4
-    }
-
-    .card.over,
-    .card.hl {
-      border-color: var(--verde);
-      box-shadow: 0 0 0 2px var(--verde)
-    }
-
-    .badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: var(--escuro);
-      color: #fff;
-      border-radius: 5px;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: .75rem;
-      font-weight: 700
-    }
-
-    .thumb {
-      width: 100%;
-      aspect-ratio: 4/3;
-      object-fit: contain;
-      background: #E4E9E1;
-      display: block;
-      border-radius: 5px
-    }
-
-    .meta {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 6px;
-      flex-wrap: wrap
-    }
-
-    .name {
-      flex: 1 0 100%;
-      font-size: .74rem;
-      color: var(--suave);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap
-    }
-
-    .side {
-      position: sticky;
-      top: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-height: calc(100vh - 32px);
-      background: var(--papel);
-      border: 1px solid var(--borda);
-      border-radius: 12px;
-      padding: 14px
-    }
-
-    .side h3 {
-      margin: 0;
-      font-size: .95rem
-    }
-
-    .opts {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center
-    }
-
-    .opts label {
-      font-size: .85rem;
-      color: var(--suave);
-      margin-right: 4px
-    }
-
-    select,
-    input[type=number] {
-      font: inherit;
-      padding: 5px 8px;
-      border: 1px solid var(--borda);
-      border-radius: 6px;
-      background: #fff
-    }
-
-    input[type=number] {
-      width: 64px
-    }
-
-    .pages {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-      gap: 12px;
-      overflow: auto;
-      padding: 10px;
-      min-height: 120px;
-      background: var(--fundo);
-      border-radius: 8px
-    }
-
-    .mpw {
-      margin: 0;
-      text-align: center;
-      font-size: .72rem;
-      color: var(--suave)
-    }
-
-    .mp {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 210/297;
-      background: #fff;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, .18)
-    }
-
-    .mp img {
-      position: absolute;
-      object-fit: fill
-    }
-
-    .mp img.hl {
-      outline: 2px solid var(--verde);
-      outline-offset: 1px;
-      z-index: 1
-    }
-
-    .meter {
-      height: 8px;
-      border-radius: 4px;
-      background: var(--fundo);
-      overflow: hidden
-    }
-
-    .meter i {
-      display: block;
-      height: 100%;
-      width: 0;
-      background: var(--verde);
-      transition: width .3s
-    }
-
-    .meter[data-s=near] i {
-      background: var(--ambar)
-    }
-
-    .meter[data-s=over] i {
-      background: var(--erro)
-    }
-
-    #meterText {
-      margin: -4px 0 0;
-      font-size: .82rem;
-      color: var(--suave)
-    }
-
-    #genBtn {
-      width: 100%;
-      padding: 12px
-    }
-
-    body.dragging .work,
-    body.dragging .zone {
-      outline: 2px dashed var(--verde);
-      outline-offset: 6px
-    }
-
-    .status {
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      z-index: 40;
-      max-width: min(640px, 92vw);
-      background: var(--papel);
-      border: 1px solid var(--borda);
-      border-left: 4px solid var(--verde);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-weight: 600;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, .14)
-    }
-
-    .status.err {
-      border-left-color: var(--erro);
-      color: var(--erro)
-    }
-
-    .status:empty {
-      display: none
-    }
-
-    footer {
-      text-align: center;
-      color: var(--suave);
-      font-size: .78rem;
-      padding: 10px 0 20px
-    }
-
-    .lb {
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(10, 16, 26, .8)
-    }
-
-    .lb img {
-      max-width: 80vw;
-      max-height: 85vh;
-      object-fit: contain;
-      background: #fff;
-      border-radius: 8px
-    }
-
-    .lb button {
-      margin: 0 10px
-    }
-
-    #helpBtn {
-      margin-left: auto
-    }
-
-    .ov {
-      position: fixed;
-      inset: 0;
-      z-index: 60;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      background: rgba(10, 16, 26, .55)
-    }
-
-    .dlg {
-      width: min(640px, 100%);
-      max-height: calc(100vh - 32px);
-      display: flex;
-      flex-direction: column;
-      background: var(--papel);
-      border-radius: 12px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, .25)
-    }
-
-    .dlg-h {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--borda)
-    }
-
-    .dlg-h h2 {
-      margin: 0;
-      font-size: 1.15rem;
-      color: var(--escuro)
-    }
-
-    .dlg-b {
-      overflow: auto;
-      padding: 4px 20px 14px
-    }
-
-    .dlg-b h3 {
-      margin: 16px 0 6px;
-      font-size: .98rem
-    }
-
-    .dlg-b ul,
-    .dlg-b ol {
-      margin: 0;
-      padding-left: 20px
-    }
-
-    .dlg-b li {
-      margin: 3px 0
-    }
-
-    .dlg-b code {
-      background: var(--fundo);
-      padding: 1px 5px;
-      border-radius: 4px
-    }
-
-    .dlg-f {
-      padding: 12px 20px;
-      border-top: 1px solid var(--borda);
-      text-align: right
-    }
-
-    .os {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px 18px;
-      margin: 14px 0;
-      padding: 12px 14px;
-      background: var(--fundo);
-      border-radius: 8px
-    }
-
-    .os dt {
-      color: var(--suave);
-      font-size: .9rem
-    }
-
-    .os dd {
-      margin: 0;
-      font-weight: 700;
-      text-align: right
-    }
-
-    .os .bad {
-      color: var(--erro)
-    }
-
-    .dlg-f {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px
-    }
-
-    .pbar {
-      height: 10px;
-      border-radius: 5px;
-      background: var(--fundo);
-      overflow: hidden
-    }
-
-    .pbar i {
-      display: block;
-      height: 100%;
-      width: 0;
-      border-radius: 5px;
-      background-color: var(--verde);
-      background-image: linear-gradient(45deg, rgba(255, 255, 255, .28) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .28) 50%, rgba(255, 255, 255, .28) 75%, transparent 75%);
-      background-size: 20px 20px;
-      animation: pgs 1s linear infinite;
-      transition: width .25s
-    }
-
-    @keyframes pgs {
-      to {
-        background-position: 20px 0
-      }
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-
-    .pgline {
-      margin: 8px 0 12px;
-      font-weight: 600
-    }
-
-    #pgTime {
-      color: var(--suave);
-      font-variant-numeric: tabular-nums
-    }
-
-    .tries {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 6px;
-      font-size: .88rem
-    }
-
-    .tries li {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 7px 10px;
-      border-radius: 6px;
-      background: var(--fundo);
-      color: var(--suave)
-    }
-
-    .tries .mk {
-      flex: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      border: 2px solid var(--borda);
-      background: #fff
-    }
-
-    .tries .st {
-      margin-left: auto;
-      font-weight: 700
-    }
-
-    .tries .run,
-    .tries .ok {
-      background: #E3F2DA;
-      color: var(--tinta)
-    }
-
-    .tries .run .mk {
-      border-color: var(--verde);
-      border-right-color: transparent;
-      animation: spin .8s linear infinite
-    }
-
-    .tries .ok .mk {
-      background: var(--verde);
-      border-color: var(--verde)
-    }
-
-    .tries .ok .st {
-      color: var(--escuro)
-    }
-
-    .tries .over {
-      color: var(--tinta)
-    }
-
-    .tries .over .mk {
-      background: var(--ambar);
-      border-color: var(--ambar)
-    }
-
-    .tries .over .st {
-      color: var(--ambar)
-    }
-
-    .tries .skip {
-      opacity: .55
-    }
-
-    @media(max-width:900px) {
-      .work {
-        grid-template-columns: 1fr
-      }
-
-      .side {
-        position: static;
-        max-height: none
-      }
-
-      .steps {
-        flex-direction: column;
-        align-items: center
-      }
-    }
-
-    @media(prefers-reduced-motion:reduce) {
-      * {
-        transition: none !important;
-        animation: none !important
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src blob:; base-uri 'none'; form-action 'none'" />
+<meta name="author" content="Gui Stelmach" />
+<title>OptimizerPDF</title>
+<style>
+/* ==========================================================================
+OptimizerPDF — estilos
+Organização: 1 tokens · 2 base · 3 layout · 4 componentes · 5 estados · 6 responsivo
+Padrão: "design tokens" (todo valor de cor, tipo e forma vem de uma variável)
+e variantes de botão por variáveis locais (--btn-*), sem repetir regras.
+========================================================================== */
+/* 1. TOKENS ---------------------------------------------------------------- */
+:root{
+/* cor de destaque: petróleo (ciano escuro), sobre neutros quentes "papel" */
+--accent-vivid:#0891B2; /* preenchimentos (barras, destaques) */
+--accent-btn:#0E7490; /* fundo de botão com texto branco (contraste AA) */
+--accent-text:#0B6A86; /* destaque para texto */
+--accent-dark:#0B5A72; /* hover, foco e números de página */
+/* cores semânticas */
+--bg:#F2F1ED; --surface:#fff; --line:#DEDBD3; --tint:#E1F2F6; --thumb-bg:#E7E5DF;
+--text:#25292E; --title:#14181D; --muted:#5E6268;
+--accent:var(--accent-vivid); --warn:#9A5A00; --danger:#C0392B;
+/* tipografia */
+--font:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+--mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+--fs-xs:.75rem; --fs-sm:.875rem; --fs-base:.9375rem; --fs-md:1.125rem; --fs-lg:1.375rem; --fs-xl:1.75rem;
+--fw-regular:400; --fw-medium:600; --fw-bold:700; --lh-tight:1.25;
+/* forma */
+--r-sm:4px; --r-md:6px; --r-lg:12px;
+--shadow-1:0 1px 3px rgba(20,30,40,.08); --shadow-2:0 6px 18px rgba(0,0,0,.14);
+}
+/* 2. BASE ------------------------------------------------------------------ */
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{display:flex;flex-direction:column;min-height:100vh;font:var(--fs-base)/1.5 var(--font);background:var(--bg);color:var(--text)}
+body.modal{overflow:hidden}
+h1,h2,h3{line-height:var(--lh-tight);color:var(--title)}
+:focus-visible{outline:3px solid var(--accent-dark);outline-offset:2px}
+.hidden{display:none!important}
+.muted{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+/* números alinhados (valores que mudam na tela não "tremem") */
+#meterText,#pgTime,#pgLine,#count,#size,#spInfo,#spSummary,.os dd,.tries .st,.part .sz{font-variant-numeric:tabular-nums}
+select,input[type=number]{font:inherit;color:var(--text);padding:5px 8px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+input[type=number]{width:64px}
+/* 3. LAYOUT ---------------------------------------------------------------- */
+.wrap{max-width:1380px;margin:0 auto;padding:0 32px}
+main{padding-top:6px;padding-bottom:28px}
+main.wrap{flex:1;width:100%}
+.work{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start;margin-top:12px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.bar p{margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:10px}
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:28px}
+/* 4. COMPONENTES ----------------------------------------------------------- */
+/* 4.1 Cabeçalho (identidade aprovada: degradê verde) */
+.top{background:linear-gradient(90deg,#0A4A5F,#0C5D77 55%,#0E7490);color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.1)}
+.top .bar-top{display:flex;align-items:center;justify-content:space-between;min-height:60px;padding-top:0;padding-bottom:0}
+.top :focus-visible{outline-color:#fff}
+.logo{background:none;border:0;padding:0;font:700 1.2rem/1 var(--font);color:#fff;cursor:pointer}
+.hbtn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:7px 14px;font-weight:var(--fw-medium)}
+.hbtn:hover{background:rgba(255,255,255,.25)}
+/* 4.2 Título da página */
+.head{padding:18px 0 4px}
+.crumb{display:flex;align-items:center;gap:12px}
+
+
+.back{background:none;border:0;padding:4px 8px;color:var(--accent-text);font-weight:var(--fw-bold)}
+.back:hover{text-decoration:underline}
+#brand{margin:10px 0 2px;font-size:var(--fs-xl);font-weight:var(--fw-bold)}
+.lead{margin:0;max-width:760px}
+/* 4.3 Superfícies (mesma base para todos os "cartões") */
+.card,.part,.side,.tool,.zone{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-1)}
+.zone{max-width:820px;margin:48px auto 0;padding:32px;text-align:center;border:2px dashed #CFCBC1;border-radius:14px;box-shadow:none}
+.zone h2{margin:0 0 6px;font-size:var(--fs-lg);font-weight:var(--fw-bold)}
+.zone .primary{margin:18px 0 6px}
+.steps{list-style:none;counter-reset:s;display:flex;justify-content:center;gap:18px;margin:26px 0 0;padding:0;text-align:left;font-size:var(--fs-sm);color:var(--muted)}
+.steps li{counter-increment:s;display:flex;align-items:flex-start;gap:8px;max-width:200px}
+.steps li::before{content:counter(s);flex:none;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent-btn);color:#fff;font-size:var(--fs-xs);font-weight:var(--fw-bold)}
+/* 4.4 Botões: variantes por variáveis locais --btn-bg / --btn-fg / --btn-bd */
+button{font:inherit;font-weight:var(--fw-medium);padding:9px 16px;border:1px solid var(--btn-bd,transparent);border-radius:5px;background:var(--btn-bg,transparent);color:var(--btn-fg,inherit);cursor:pointer;transition:background-color .15s,border-color .15s}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{--btn-bg:var(--accent-btn);--btn-fg:#fff}
+.primary:hover:not(:disabled){--btn-bg:var(--accent-dark)}
+.sec{--btn-bg:var(--surface);--btn-bd:var(--line);--btn-fg:var(--text)}
+.sec:hover{--btn-bd:var(--accent)}
+.danger{--btn-bg:var(--surface);--btn-bd:var(--line);--btn-fg:var(--danger)}
+.ico,.rm{--btn-bg:var(--bg);--btn-fg:var(--text);padding:3px 8px;min-width:28px}
+.ico:hover,.rm:hover{--btn-bg:var(--line)}
+.rm{--btn-fg:var(--danger);margin-left:auto}
+#genBtn{width:100%;padding:12px}
+/* 4.5 Lista de imagens */
+.pg{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-top:6px;color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.pg::after{content:"";flex:1;height:1px;background:var(--line)}
+.card{position:relative;padding:6px;border-radius:var(--r-sm);cursor:grab}
+.card.drag{opacity:.4}
+.card.over,.card.hl{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.badge{position:absolute;top:10px;left:10px;display:flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 5px;border-radius:5px;background:var(--accent-dark);color:#fff;font-size:var(--fs-xs);font-weight:var(--fw-bold)}
+.thumb{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--thumb-bg);border-radius:5px}
+.meta{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:6px}
+.name{flex:1 0 100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-xs);color:var(--muted)}
+.size.warn{color:var(--danger);font-weight:var(--fw-bold)}
+/* 4.6 Painel lateral e pré-visualização */
+.side{position:sticky;top:16px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 32px);padding:14px;border-radius:var(--r-md)}
+.side h3,.dlg-h h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-bold)}
+.opts{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.opts label{margin-right:4px;font-size:var(--fs-sm);color:var(--muted)}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px;overflow:auto;min-height:120px;padding:10px;background:var(--bg);border-radius:8px}
+.mpw{margin:0;text-align:center;font-size:var(--fs-xs);color:var(--muted)}
+.mp{position:relative;width:100%;aspect-ratio:210/297;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.mp img{position:absolute;object-fit:fill}
+.mp img.hl{outline:2px solid var(--accent);outline-offset:1px;z-index:1}
+.meter{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.meter[data-s=near] i{background:var(--warn)}
+.meter[data-s=over] i{background:var(--danger)}
+#meterText{margin:-4px 0 0;font-size:var(--fs-sm);color:var(--muted)}
+/* 4.7 Tela inicial (cartões de ferramenta) */
+.tool{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:22px 52px 22px 22px;border-radius:var(--r-lg);text-align:left;color:var(--text);font-weight:var(--fw-regular)}
+.tool strong{font-size:var(--fs-md);color:var(--accent-text)}
+.tool span{font-size:var(--fs-sm);line-height:1.45;color:var(--muted)}
+.tool .chev{position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:var(--fs-xl);font-style:normal;color:var(--accent-text)}
+.tool:hover:not(:disabled){border-color:var(--accent);box-shadow:0 4px 14px rgba(20,45,60,.14)}
+.tool:disabled{opacity:1;cursor:not-allowed}
+.tool:disabled strong,.tool:disabled span{opacity:.55}
+.tool .soon{padding:3px 8px;border-radius:3px;background:#E4E1DA;color:var(--text);font-size:var(--fs-xs);font-weight:var(--fw-bold);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
+/* 4.8 Divisão de PDF */
+.part{display:grid;grid-template-columns:1fr 150px auto auto;align-items:center;gap:6px 14px;margin-top:8px;padding:10px 12px;border-radius:var(--r-md)}
+.part .ph{display:flex;flex-direction:column}
+.part .sz{font-weight:var(--fw-bold)}
+#spWarn:empty{display:none}
+/* 4.9 Janelas (ampliação, ajuda, confirmação, progresso) e aviso de status */
+.lb,.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.lb{z-index:50;background:rgba(10,16,26,.8)}
+.lb img{max-width:80vw;max-height:85vh;object-fit:contain;background:#fff;border-radius:8px}
+.lb button{margin:0 10px}
+.ov{z-index:60;padding:16px;background:rgba(10,16,26,.55)}
+.dlg{display:flex;flex-direction:column;width:min(640px,100%);max-height:calc(100vh - 32px);background:var(--surface);border-radius:var(--r-lg);box-shadow:0 12px 36px rgba(0,0,0,.25)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.dlg-b{overflow:auto;padding:4px 20px 14px}
+.dlg-author{margin:8px 0 0;color:var(--muted);font-size:var(--fs-xs)}
+.dlg-b h3{margin:16px 0 6px;font-size:var(--fs-base);font-weight:var(--fw-bold)}
+.dlg-b ul,.dlg-b ol{margin:0;padding-left:20px}
+.dlg-b li{margin:3px 0}
+.dlg-b code{padding:1px 5px;border-radius:var(--r-sm);background:var(--bg);font:.9em var(--mono)}
+.dlg-f{display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid var(--line)}
+.os{display:grid;grid-template-columns:1fr auto;gap:6px 18px;margin:14px 0;padding:12px 14px;background:var(--bg);border-radius:8px}
+.os dt{font-size:var(--fs-sm);color:var(--muted)}
+.os dd{margin:0;text-align:right;font-weight:var(--fw-bold)}
+.os .bad{color:var(--danger)}
+.pbar{height:10px;border-radius:5px;background:var(--bg);overflow:hidden}
+.pbar i{display:block;height:100%;width:0;border-radius:5px;background-color:var(--accent);background-image:linear-gradient(45deg,rgba(255,255,255,.28) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.28) 75%,transparent 75%);background-size:20px 20px;animation:pgs 1s linear infinite;transition:width .25s}
+@keyframes pgs{to{background-position:20px 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pgline{margin:8px 0 12px;font-weight:var(--fw-medium)}
+#pgTime{color:var(--muted)}
+.tries{list-style:none;display:grid;gap:6px;margin:0;padding:0;font-size:var(--fs-sm)}
+.tries li{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-md);background:var(--bg);color:var(--muted)}
+.tries .mk{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--line);background:#fff}
+.tries .st{margin-left:auto;font-weight:var(--fw-bold)}
+.tries .run,.tries .ok{background:var(--tint);color:var(--text)}
+.tries .run .mk{border-color:var(--accent);border-right-color:transparent;animation:spin .8s linear infinite}
+.tries .ok .mk{background:var(--accent);border-color:var(--accent)}
+.tries .ok .st{color:var(--accent-text)}
+.tries .over{color:var(--text)}
+.tries .over .mk{background:var(--warn);border-color:var(--warn)}
+.tries .over .st{color:var(--warn)}
+.tries .skip{opacity:.55}
+.status{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;max-width:min(640px,92vw);padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;font-weight:var(--fw-medium);box-shadow:var(--shadow-2)}
+.status.err{border-left-color:var(--danger);color:var(--danger)}
+.status:empty{display:none}
+#operationBar{padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px} #operationText{overflow-wrap:anywhere}
+/* 5. ESTADOS --------------------------------------------------------------- */
+body.dragging .work,body.dragging .zone{outline:2px dashed var(--accent);outline-offset:6px}
+/* 6. RESPONSIVO E PREFERÊNCIAS --------------------------------------------- */
+@media(max-width:900px){.work{grid-template-columns:1fr}.side{position:static;max-height:none}.steps{flex-direction:column;align-items:center}}
+@media(max-width:700px){.top .bar-top{flex-wrap:wrap;gap:10px;padding-top:8px;padding-bottom:8px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* P2: dimensionamento flexível, foco visível e informações que não dependem só da cor. */
+html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wrap{width:100%;padding-inline:clamp(14px,3vw,32px)}
+.work>*{min-width:0}.home{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,132px),1fr))}
+.top .bar-top{gap:12px;flex-wrap:wrap}.logo{max-width:100%;text-align:left;line-height:1.4;overflow-wrap:anywhere}.zone{width:100%;padding:clamp(16px,4vw,32px)}
+#brand,.lead,#spName,.ph,.sz,.name,.pgline,.dlg h2,#operationText{overflow-wrap:anywhere;min-width:0}.name{white-space:normal;overflow:visible;text-overflow:clip}.badge{pointer-events:none}
+.previewButton{display:block;width:100%;padding:0;border:0;background:transparent}.previewButton:focus-visible{outline:3px solid var(--accent-dark);outline-offset:3px}
+.ico,.rm{min-width:44px;min-height:44px}.ico[aria-disabled=true]{color:var(--muted);background:var(--bg);cursor:default}.meta{gap:6px}
+.side{max-height:none;position:static}.pages{max-height:45vh;min-width:0}.opts>span{display:flex;align-items:center;flex-wrap:wrap;gap:6px;max-width:100%}.opts label{margin:0}.opts input[type=number]{width:84px;max-width:100%}
+.part{grid-template-columns:minmax(0,1fr) minmax(70px,120px) minmax(100px,auto) auto}.part>*{min-width:0}.part .sz{font-size:var(--fs-sm)}
+.dlg{min-width:0;max-height:calc(100dvh - 24px)}.dlg-h{align-items:flex-start;min-width:0}.dlg-h button{flex-shrink:0;min-width:44px;min-height:44px}.dlg-b{min-height:0;overscroll-behavior:contain}.dlg-f{flex-wrap:wrap}.dlg-f button{max-width:100%;white-space:normal}
+.os{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.os dd{overflow-wrap:anywhere}.tries li{flex-wrap:wrap}.tries .st{max-width:100%;overflow-wrap:anywhere}
+.lb{padding:12px}.lb .lightboxPanel{width:min(1080px,100%);height:min(900px,calc(100dvh - 24px));display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;background:#fff;border-radius:10px;padding:12px;gap:10px}
+.lb .lightboxHeader{display:flex;align-items:center;justify-content:space-between;gap:8px}.lb h2{font-size:1.15rem;margin:0}.lb #lbImg{width:100%;height:100%;min-height:0;object-fit:contain;max-width:none;max-height:none}.lb button{margin:0;min-height:44px;max-width:100%}
+.lb .lightboxFooter{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.lb #lbCaption{font-size:var(--fs-sm);text-align:center;overflow-wrap:anywhere;margin:0;max-height:20vh;overflow:auto}
+#operationBar{flex-wrap:wrap}#operationCancel{flex-shrink:0}.status{position:static;transform:none;max-width:1320px;width:calc(100% - 28px);margin:8px auto 18px;box-shadow:none;overflow-wrap:anywhere}
+#downloadHistory{margin-top:24px;padding:16px;border:1px solid var(--line);background:#fff;border-radius:8px}#downloadList{max-height:320px;overflow:auto;padding-left:24px}.request{padding:8px 0}.request strong,.request span{display:block;overflow-wrap:anywhere}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-10000px;top:8px;z-index:100}.skip:focus{left:12px;background:#fff;padding:12px;color:var(--accent-text)}
+@media(max-width:1100px){.part{grid-template-columns:minmax(0,1fr) auto}.part .ph{grid-column:1/-1}.part .meter{grid-column:1/-1}.part button{justify-self:end}}
+@media(max-width:600px){.wrap{padding-inline:14px}.zone{margin-top:22px}.head{padding-top:12px}#brand{font-size:1.45rem}.work{gap:12px}.bar>div{display:flex;gap:8px;flex-wrap:wrap}.home{gap:12px}.tool{padding:18px 42px 18px 18px}.dlg-h,.dlg-b,.dlg-f{padding-inline:14px}.ov{padding:10px}.dlg-f{flex-direction:column}.dlg-f button{width:100%}.os{grid-template-columns:1fr}.os dd{text-align:left;margin-bottom:8px}.lb .lightboxFooter{grid-template-columns:1fr 1fr}.lb #lbCaption{grid-row:1;grid-column:1/-1}.part{grid-template-columns:1fr}.part button{justify-self:stretch}.part .sz{grid-column:1/-1}.steps{margin-top:18px}.opts{gap:10px}.top .bar-top{padding-block:10px}}
+@media(max-height:500px){.lb .lightboxPanel{gap:4px;padding:8px}.lb #lbCaption{max-height:45px}.lb .lightboxFooter{grid-template-columns:auto minmax(0,1fr) auto}.lb #lbCaption{grid-column:auto;grid-row:auto}.dlg-h,.dlg-f{padding-block:6px}}
+
+
+.hbtn{background:#fff;color:var(--accent-text);border-color:#fff}.hbtn:hover{background:var(--tint)}
+
+/* Oculta só o título redundante da tela inicial, mantendo o título acessível. */
+#brand.sr-only{margin:-1px;padding:0}
+/* 7. AJUSTES DE INTERFACE: ações do cabeçalho, carregamento de imagens, histórico */
+.hactions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hbtn .cnt{display:inline-block;min-width:20px;margin-left:8px;padding:0 6px;border-radius:999px;background:var(--accent-btn);color:#fff;font-size:var(--fs-xs);font-weight:var(--fw-bold);line-height:20px;text-align:center;font-variant-numeric:tabular-nums}
+/* Carregamento das imagens: progresso real + miniaturas reservadas que se confirmam uma a uma */
+.loadcard{max-width:820px;margin:28px auto 0;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-1)}
+.loadhead{display:flex;align-items:center;gap:12px}
+.loadhead h2{flex:1;margin:0;font-size:var(--fs-md);font-weight:var(--fw-bold)}
+.spinner{flex:none;width:22px;height:22px;border-radius:50%;border:3px solid var(--tint);border-top-color:var(--accent-dark);animation:spin .8s linear infinite}
+.loadpct{font-weight:var(--fw-bold);color:var(--accent-text);font-variant-numeric:tabular-nums}
+.loadcard .pbar{margin-top:14px}
+.loadline{margin:8px 0 0;color:var(--muted);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}
+.skel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,104px),1fr));gap:10px;margin-top:16px}
+.skel{position:relative;aspect-ratio:4/3;border-radius:var(--r-sm);background:linear-gradient(100deg,var(--thumb-bg) 30%,#F7F6F2 50%,var(--thumb-bg) 70%);background-size:200% 100%;animation:shimmer 1.3s ease-in-out infinite}
+.skel.done{animation:none;background:var(--tint)}
+.skel.done::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--accent-text);font-size:var(--fs-lg);font-weight:var(--fw-bold);animation:pop .25s ease-out}
+.loadfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
+.pbar.indet i{width:35%;animation:indet 1.3s ease-in-out infinite;transition:none}
+.skel-grid.skel-pages{grid-template-columns:repeat(auto-fill,minmax(min(100%,84px),1fr))}
+.skel-grid.skel-pages .skel{aspect-ratio:3/4}
+@keyframes indet{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+.card.enter{animation:cardIn .35s ease-out backwards}
+/* Histórico de downloads */
+.hist{margin-top:12px}
+.hstats{display:flex;flex-wrap:wrap;gap:8px 36px;margin:0 0 14px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.hstats div{min-width:0}.hstats dt{font-size:var(--fs-xs);color:var(--muted)}.hstats dd{margin:2px 0 0;font-weight:var(--fw-bold);font-variant-numeric:tabular-nums}
+.hbar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin-bottom:10px}
+.hbar label{margin-right:6px;font-size:var(--fs-sm);color:var(--muted)}
+.hwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-1)}
+.htable{width:100%;min-width:640px;border-collapse:collapse;font-size:var(--fs-sm)}
+.htable th{padding:10px 14px;text-align:left;font-weight:var(--fw-bold);color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line);white-space:nowrap}
+.htable td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.htable tr:last-child td{border-bottom:0}
+.htable .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hname{min-width:200px;font-weight:var(--fw-medium);overflow-wrap:anywhere}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--tint);color:var(--accent-text);font-size:var(--fs-xs);font-weight:var(--fw-bold);white-space:nowrap}
+.hempty{margin:0;padding:32px 16px;text-align:center;background:var(--surface);border:1px dashed #CFCBC1;border-radius:var(--r-md)}
+.hnote{margin-top:12px;max-width:760px}
+/* 8. OTIMIZAR PDF */
+#optWrap{max-height:440px;overflow:auto}
+#optWrap thead th{position:sticky;top:0;z-index:1}
+.optres{margin:12px 0;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-md)}
+.optres.none{border-left-color:var(--warn)}
+.optres strong{display:block;font-size:var(--fs-md);font-variant-numeric:tabular-nums}
+.optres p{margin:6px 0 0}
+.optcmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.optcmp>div>span{display:block;margin-bottom:4px;font-size:var(--fs-sm);font-weight:var(--fw-bold)}
+.optcmp>div,#optPanel>div{min-width:0}
+.cmpbox{height:340px;max-width:100%;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:var(--r-sm)}
+.cmpbox img{display:block;max-width:none;height:auto}
+@media (max-width:700px){.optcmp{grid-template-columns:1fr}}
+/* Avisos padrão (callouts): ficam logo acima do botão e explicam o que está acontecendo. Tipos: info (padrão), warn, err */
+.callout{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:12px 0;padding:10px 12px;background:var(--tint);border:1px solid var(--line);border-radius:var(--r-md);font-size:var(--fs-sm)}
+.callout::before{content:"i";grid-row:1/3;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent-btn);color:#fff;font-size:var(--fs-xs);font-weight:var(--fw-bold)}
+.callout>*{grid-column:2}.callout strong{display:block}
+.callout.warn{background:#FFF4E0;border-color:#E8C98F}.callout.warn::before{content:"!";background:var(--warn)}
+.callout.err{background:#FDECEA;border-color:#F0B8B2}.callout.err::before{content:"!";background:var(--danger)}
+#optTarget[aria-invalid="true"]{border-color:var(--danger);outline-color:var(--danger)}
+</style>
 </head>
+<body><a class="skip" href="#workspace">Ir para a área de trabalho</a>
+<header class="top"><div class="wrap bar-top"><button class="logo" id="hdrTitle" type="button"></button><div class="hactions"><!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO. Como não há persistência ao reiniciar a sessão (a lista é apagada ao fechar/recarregar a página), o botão fica invisível e o histórico não é citado na interface nem na ajuda. A função, a tela e o registro em memória foram mantidos como base para uma futura persistência: para reativar, remova a classe "hidden" deste botão e defina HISTORY_ENABLED = true no script. -->
+<button class="hbtn hidden" id="historyBtn" type="button">Histórico<span class="cnt hidden" id="historyCount"></span></button><button class="hbtn" id="helpBtn" type="button">Como usar</button></div></div></header>
+<main class="wrap" id="workspace" tabindex="-1" aria-label="Área de trabalho"><div id="operationBar" class="card hidden" role="status" aria-live="polite"><span id="operationText"></span> <button id="operationCancel" type="button" class="sec">Cancelar operação</button></div>
+<div class="head"><div class="crumb"><button class="back hidden" id="back" type="button">← Ferramentas</button></div><h1 id="brand" class="sr-only"></h1><p class="lead" id="lead"></p></div>
+<section class="home" id="home">
+<button class="tool" id="cardImg" type="button"><strong>Criar novo PDF</strong><span>Organize imagens e gere um PDF. Se a compressão não atingir o limite, o download depende da sua autorização explícita.</span><i class="chev">›</i></button>
+<button class="tool" id="cardPdf" type="button"><strong>Dividir PDF existente</strong><span>Confira o tamanho real das partes. Recursos não preserváveis bloqueiam a divisão; originais que já cabem são mantidos intactos.</span><i class="chev">›</i></button>
+<button class="tool" id="cardOpt" type="button"><strong>Otimizar PDF</strong><span>Reduza o tamanho de um PDF existente sem prejudicar a leitura dos prints. O resultado é um arquivo novo; o original permanece intacto.</span><i class="chev">›</i></button>
+</section>
+<section class="zone" id="zone">
+<h2>Selecione os prints</h2>
+<p class="muted">Arraste as imagens para qualquer lugar da página ou escolha os arquivos do computador.</p>
+<input id="fileInput" type="file" accept="image/*" multiple class="hidden" />
+<button class="primary" id="selectBtn" type="button">Selecionar imagens</button>
+<p class="muted">As imagens permanecem neste computador e não são enviadas a nenhum servidor.</p>
+<ol class="steps"><li><span><b>Selecione</b> os prints</span></li><li><span><b>Organize</b> a ordem das
+páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</span></li></ol>
+</section>
+<section class="loadcard hidden" id="loadCard" aria-labelledby="loadTitle">
+<div class="loadhead"><span class="spinner" aria-hidden="true"></span><h2 id="loadTitle">Preparando as imagens…</h2><span class="loadpct" id="loadPct">0%</span></div>
+<div class="pbar" id="loadBar" role="progressbar" aria-labelledby="loadTitle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="loadFill"></i></div>
+<p class="loadline" id="loadLine"></p>
+<div class="skel-grid" id="loadSkel" aria-hidden="true"></div>
+<div class="loadfoot"><p class="muted" id="loadNote">As imagens ficam neste computador. Você pode cancelar a qualquer momento.</p><button class="sec" id="loadCancel" type="button">Cancelar</button></div>
+<p class="sr-only" id="loadAnnounce" role="status" aria-live="polite"></p>
+</section>
+<section class="work hidden" id="panel">
+<div>
+<div class="bar">
+<p><strong id="count"></strong> · <span class="size" id="size"></span></p>
+<div><button class="sec" id="addBtn" type="button">Adicionar mais</button> <button class="danger" id="clearBtn" type="button">Limpar tudo</button></div>
+</div>
+<p class="muted">Use os botões ↑ e ↓ ou arraste os cartões para reordenar. Para ampliar, use o botão da imagem com clique, Enter ou Espaço.</p>
+<div class="grid" id="grid"></div>
+</div>
+<aside class="side">
+<h3>Pré-visualização</h3>
+<div class="opts">
+<span><label for="ipp">Espaços por página</label><select id="ipp"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></span>
+<span><label for="limit">Limite (MB)</label><input aria-describedby="imageError meterText" id="limit" type="number" min="0.5" max="100" step="0.1" value="2" /></span>
+</div>
+<p class="muted">Verticais consecutivas formam par; horizontais ocupam uma linha. A ordem da lista é a ordem do PDF.</p>
+<div class="pages" id="pages"></div>
+<div class="meter" id="meter"><i id="meterFill"></i></div>
+<p id="meterText"></p><p id="imageError" role="status" aria-live="polite" class="muted"></p>
+<button class="primary" id="genBtn" type="button" disabled>Gerar PDF</button>
+</aside>
+</section>
+<section class="zone hidden" id="splitZone">
+<h2>Selecione o PDF</h2>
+<p class="muted">Arraste um PDF para a página ou escolha o arquivo no computador.</p>
+<input id="pdfInput" type="file" accept=".pdf,application/pdf" class="hidden" />
+<button class="primary" id="pdfBtn" type="button">Selecionar PDF</button>
+<p class="muted">Se o original já couber, ele será baixado intacto. Quando for necessária divisão, as partes serão conferidas pelo tamanho real; recursos não suportados bloquearão a operação em vez de serem removidos.</p>
+</section>
+<section class="work hidden" id="splitPanel">
+<div>
+<div class="bar"><p><strong id="spName"></strong> · <span id="spInfo"></span></p><button class="danger" id="spClear" type="button">Trocar PDF</button></div>
+<div id="spParts"></div>
+</div>
+<aside class="side">
+<h3>Divisão</h3>
+<div class="opts">
+<span><label for="spLimit">Limite por parte (MB)</label><input aria-describedby="spWarn spSummary" id="spLimit" type="number" min="0.5" max="100" step="0.1" value="2" /></span>
+<span><label for="maxAtt">Máx. de anexos</label><input aria-describedby="spWarn spSummary" id="maxAtt" type="number" min="1" max="100" step="1" value="5" /></span>
+</div>
+<label class="muted"><input id="spBal" type="checkbox" checked /> Equilibrar o tamanho das partes</label>
+<p class="muted">Um original que já cabe no limite é mantido intacto. Recursos que não podem ser preservados bloqueiam a divisão.</p><p class="muted" id="spSummary"></p>
+<div id="spWarn" role="status" aria-live="polite"></div>
+<button class="primary" id="spAll" type="button" disabled>Baixar todas as partes</button>
+</aside>
+</section>
+<section class="zone hidden" id="optZone">
+<h2>Selecione o PDF</h2>
+<p class="muted">Arraste um PDF para a página ou escolha o arquivo no computador.</p>
+<input id="optInput" type="file" accept=".pdf,application/pdf" class="hidden" />
+<button class="primary" id="optBtn" type="button">Selecionar PDF</button>
+<p class="muted">Nesta versão são reduzidas as imagens JPEG do PDF, como as dos PDFs gerados por este aplicativo. O original nunca é alterado; o resultado é um novo arquivo.</p>
+</section>
+<section class="work hidden" id="optPanel">
+<div>
+<div class="bar"><p><strong id="optName"></strong> · <span id="optInfo"></span></p><button class="danger" id="optClear" type="button">Trocar PDF</button></div>
+<p id="optNote" class="muted" role="status" aria-live="polite"></p>
+<div class="optres hidden" id="optResult" role="status"><strong id="optResTitle"></strong><p class="muted" id="optResText"></p></div>
+<div class="optres hidden" id="optCmp"><strong>Comparar antes e depois</strong><p class="muted" id="optCmpCap"></p><div class="optcmp"><div><span>Antes (original)</span><div class="cmpbox" id="cmpA" tabindex="0" role="region" aria-label="Imagem original, em tamanho real"><img id="cmpImgA" alt="Imagem original da página" /></div></div><div><span>Depois (otimizado)</span><div class="cmpbox" id="cmpB" tabindex="0" role="region" aria-label="Imagem otimizada, na mesma ampliação"><img id="cmpImgB" alt="Imagem otimizada da página" /></div></div></div></div>
+<div class="hwrap" id="optWrap" role="region" aria-label="Páginas e imagens do PDF" tabindex="0"><table class="htable"><caption class="sr-only">Páginas do PDF com resolução efetiva das imagens e tamanho antes e depois da otimização</caption><thead><tr><th scope="col" class="num">Página</th><th scope="col" class="num">Imagens</th><th scope="col" class="num">Resolução</th><th scope="col" class="num">Antes</th><th scope="col" class="num">Depois</th><th scope="col">Situação</th></tr></thead><tbody id="optRows"></tbody></table></div>
+<p class="muted" id="optMore"></p>
+</div>
+<aside class="side">
+<h3>Otimização</h3>
+<div class="opts"><span><label for="optTarget">Meta de tamanho (MB)</label><input id="optTarget" type="number" min="0.5" max="100" step="0.1" value="2" aria-describedby="optTargetNote" /></span></div>
+<p class="muted" id="optTargetNote"></p>
+<p class="muted">O app reduz primeiro a resolução e depois a qualidade, só até onde precisa. Piso de leitura: 110 DPI e qualidade 65 %, o mesmo do Criar PDF.</p>
+<div class="callout hidden" id="optAlert" role="status"><strong id="optAlertTitle"></strong><span id="optAlertText"></span></div>
+<button class="primary" id="optRun" type="button" aria-describedby="optAlert" disabled>Otimizar PDF</button>
+<button class="primary" id="optSave" type="button" disabled>Baixar PDF otimizado</button>
+</aside>
+</section>
+<section id="historySection" class="hist hidden" aria-label="Histórico de downloads">
+<dl class="hstats"><div><dt>Solicitações nesta sessão</dt><dd id="histTotal">0</dd></div><div><dt>Tamanho somado da lista</dt><dd id="histSize">–</dd></div><div><dt>Última solicitação</dt><dd id="histLast">–</dd></div></dl>
+<div class="hbar"><span><label for="histFilter">Origem</label><select id="histFilter"><option value="all">Todas</option><option value="Criar PDF">Criar PDF</option><option value="Dividir PDF">Dividir PDF</option><option value="Otimizar PDF">Otimizar PDF</option></select></span><button id="clearDownloads" class="danger" type="button">Limpar histórico</button></div>
+<div class="hwrap" id="histWrap" role="region" aria-label="Lista de downloads solicitados" tabindex="0"><table class="htable"><caption class="sr-only">Downloads solicitados ao navegador nesta sessão, do mais recente para o mais antigo</caption><thead><tr><th scope="col" class="num">Nº</th><th scope="col">Arquivo</th><th scope="col">Origem</th><th scope="col" class="num">Tamanho</th><th scope="col">Solicitado em</th><th scope="col">Situação</th></tr></thead><tbody id="downloadList"></tbody></table></div>
+<p class="hempty muted hidden" id="histEmpty"></p>
+<p class="muted" id="downloadCount"></p>
+<p class="muted hnote">A lista mostra os downloads que o aplicativo pediu ao navegador; ela não confirma que o arquivo foi salvo. Confira a pasta de downloads antes de enviar. Não é registro de auditoria nem backup, e é apagada ao fechar ou recarregar a página.</p>
+</section></main>
+<p class="status" id="status" role="status" aria-live="polite"></p>
+<div class="lb hidden" id="lb" role="dialog" aria-modal="true" aria-labelledby="lbTitle" aria-describedby="lbCaption"><div class="lightboxPanel"><div class="lightboxHeader"><h2 id="lbTitle">Visualização ampliada</h2><button class="danger" id="lbClose" type="button" aria-label="Fechar ampliação">Fechar ×</button></div><img id="lbImg" alt="Imagem ampliada"/><div class="lightboxFooter"><button class="sec" id="lbPrev" type="button" aria-label="Imagem anterior">← Anterior</button><p id="lbCaption" role="status" aria-live="polite" aria-atomic="true"></p><button class="sec" id="lbNext" type="button" aria-label="Próxima imagem">Próxima →</button></div></div></div>
+<div class="ov hidden" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+<div class="dlg">
+<div class="dlg-h"><h2 id="helpTitle">Como usar o OptimizerPDF</h2><button class="sec" id="helpClose" type="button" aria-label="Fechar">×</button></div>
+<div class="dlg-b">
+<p class="dlg-author">Desenvolvido por Guilherme Medeiros Stelmach (guilherme_stelmach)</p>
+<h3>Criar um PDF com imagens</h3>
+<ol>
+<li><b>Selecione</b> os prints (JPG, PNG, WebP, GIF, BMP ou AVIF) ou arraste-os para qualquer lugar da página.</li>
+<li><b>Organize</b> a ordem: arraste os cartões ou use ↑ ↓. Clique na imagem para ampliar e em × para remover.</li>
+<li><b>Escolha</b> quantos espaços por página (1, 2 ou 4) e confira a pré-visualização. A ordem da lista é a ordem do PDF.</li>
+<li><b>Gere</b> o PDF. O navegador baixa o arquivo; confira na pasta de downloads se ele foi salvo. O nome padrão é <code id="helpName"></code>.</li>
+</ol>
+<h3>Limite de tamanho</h3>
+<ul>
+<li>O limite padrão é de 2 MB e pode ser alterado no campo <b>Limite (MB)</b>. Os tamanhos seguem o padrão do Explorador de Arquivos do Windows.</li>
+<li>Para caber no limite, o app reduz a resolução e a qualidade das imagens em etapas. Textos muito pequenos podem perder nitidez; abra o PDF e confira antes de enviar.</li>
+<li>Se mesmo na menor qualidade o PDF passar do limite, o app pergunta se você quer baixar assim mesmo. Sem a sua autorização, nada é baixado.</li>
+</ul>
+<h3>Dividir um PDF existente</h3>
+<ul>
+<li>Escolha <b>Dividir PDF existente</b> ou solte o PDF na página.</li>
+<li>Se o arquivo já couber no limite, ele é baixado intacto. Se não couber, é dividido em partes, sem recompressão das imagens.</li>
+<li>Se uma única página passar do limite, a divisão não é liberada. Aumente o limite ou reduza o arquivo antes com o Otimizar PDF.</li>
+<li>PDFs protegidos por senha, ou com formulários, anotações ou revisões incrementais, não podem ser divididos. O aplicativo informa o motivo.</li>
+<li><b>Máx. de anexos</b> é só um aviso: se houver mais partes do que o definido, o app pede confirmação antes do download em lote.</li>
+</ul>
+<h3>Otimizar um PDF existente</h3>
+<ul>
+<li>Escolha <b>Otimizar PDF</b>, selecione o arquivo e informe a <b>meta de tamanho</b> em MB. O app reduz primeiro a resolução e depois a qualidade, só até onde precisa.</li>
+<li>Há um piso para preservar a leitura (110 DPI e qualidade 65 %, o mesmo do Criar PDF). Se a meta não puder ser atingida acima do piso, o app informa o menor tamanho possível. Compare o antes e o depois antes de baixar.</li>
+<li>O original nunca é alterado: o resultado é um arquivo novo, com final <code>_otimizado</code>.</li>
+<li>Nesta versão são reduzidas as imagens JPEG do PDF. Arquivos com outros formatos, formulários, anotações ou senha são informados e não são alterados.</li>
+</ul>
+<h3>Privacidade</h3>
+<ul>
+<li>Tudo é processado neste computador; nada é enviado a servidores. Ao fechar ou recarregar a página, a seleção é apagada. Os arquivos já baixados permanecem.</li>
+<li>Durante uma operação a tela fica bloqueada. Use <b>Cancelar</b> para interrompê-la.</li>
+<li>Formatos como HEIC não são lidos. Converta para JPG ou PNG antes.</li>
+</ul>
+</div>
+<div class="dlg-f"><button class="primary" id="helpOk" type="button">Entendi</button></div>
+</div>
+</div>
+<div class="ov hidden" id="over" role="alertdialog" aria-modal="true" aria-labelledby="osTitle" aria-describedby="osDesc">
+<div class="dlg" style="width:min(480px,100%)">
+<div class="dlg-h"><h2 id="osTitle">O PDF ficou acima do limite</h2></div>
+<div class="dlg-b">
+<p id="osDesc" style="margin:14px 0 0">Mesmo com a qualidade reduzida ao mínimo, o PDF gerado ultrapassou o limite definido. Nenhum download foi solicitado nesta geração.</p>
+<dl class="os">
+<dt>Tamanho original (soma dos arquivos)</dt><dd id="osOrig"></dd>
+<dt>Tamanho do PDF gerado</dt><dd id="osPdf" class="bad"></dd>
+<dt>Limite definido</dt><dd id="osLimit"></dd>
+<dt>Excedente</dt><dd id="osOver" class="bad"></dd>
+</dl>
+<p class="muted">Para reduzir o tamanho, escolha <b>Não solicitar download</b>, remova imagens ou aumente o limite e gere novamente.</p>
+</div>
+<div class="dlg-f"><button class="sec" id="osYes" type="button">Solicitar download acima do limite</button><button class="primary" id="osNo" type="button">Não solicitar download</button></div>
+</div>
+</div>
+<div class="ov hidden" id="prog" role="dialog" aria-modal="true" aria-labelledby="pgTitle" aria-describedby="pgNote">
+<div class="dlg" style="width:min(520px,100%)">
+<div class="dlg-h"><h2 id="pgTitle">Gerando o PDF…</h2><span id="pgTime">0 s</span></div>
+<div class="dlg-b">
+<p class="muted" id="pgNote" style="margin:14px 0 12px">O app testa qualidades diferentes até o PDF caber no limite de <b id="pgLimit"></b>. Se uma tentativa passar do limite, ele tenta automaticamente uma versão mais leve. Isso pode levar alguns segundos. Não feche a página.</p>
+<div class="pbar" id="pgBar" role="progressbar" aria-label="Progresso da geração do PDF" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="pgFill"></i></div>
+<p class="pgline" id="pgLine" role="status" aria-live="polite" aria-atomic="true"></p>
+<ol class="tries" id="pgTries"></ol>
+</div>
+<div class="dlg-f"><button class="sec" id="pgCancel" type="button">Cancelar</button></div>
+</div>
+</div>
+<div class="ov hidden" id="duplicates" role="dialog" aria-modal="true" aria-labelledby="dupTitle" aria-describedby="dupSummary"><div class="dlg"><div class="dlg-h"><h2 id="dupTitle">Imagens com conteúdo repetido</h2></div><div class="dlg-b"><p id="dupSummary"></p><ul id="dupList"></ul><p class="muted">A comparação é local: SHA-256 seleciona candidatos e os bytes são conferidos. Nomes, tamanhos e datas coincidentes não excluem conteúdo diferente. Repetir uma imagem é permitido se você escolher adicionar todas.</p></div><div class="dlg-f"><button id="dupAll" class="sec" type="button">Adicionar todas, inclusive repetidas</button><button id="dupUnique" class="sec" type="button">Adicionar somente as não repetidas</button><button id="dupCancel" class="primary" type="button">Cancelar importação</button></div></div></div>
+<script id="workerSource" type="text/plain">
 
-<body>
-  <header class="top">
-    <div class="wrap">
-      <h1 id="brand"></h1><span>Organize imagens e gere um PDF dentro do limite de tamanho</span><button class="sec"
-        id="helpBtn" type="button">Como usar</button>
-    </div>
-  </header>
-  <main class="wrap">
-    <section class="zone" id="zone">
-      <h2>Selecione os prints</h2>
-      <p class="muted">Arraste as imagens para qualquer lugar da página ou escolha os arquivos do computador.</p>
-      <input id="fileInput" type="file" accept="image/*" multiple class="hidden" />
-      <button class="primary" id="selectBtn" type="button">Selecionar imagens</button>
-      <p class="muted">As imagens permanecem neste computador e não são enviadas a nenhum servidor.</p>
-      <ol class="steps">
-        <li><span><b>Selecione</b> as imagens</span></li>
-        <li><span><b>Organize</b> a ordem das páginas</span></li>
-        <li><span><b>Gere</b> o PDF dentro do limite de tamanho</span></li>
-      </ol>
-    </section>
+/* Limites técnicos preventivos; não são promessa de capacidade do dispositivo. */
+const POLICY=Object.freeze({inputBytes:209715200,outputBytes:419430400,streamBytes:67108864,expandedBytes:268435456,pages:10000,objects:200000,tokens:4000000,links:2000000,depth:256,images:400,imageBytes:52428800,imagePixels:48000000,totalPixels:240000000,timeoutMs:120000});
+class TaskError extends Error {constructor(code,message){super(message);this.name="TaskError";this.code=code;}}
+const taskFail=(code,message)=>{throw new TaskError(code,message);};
+function parseSize(raw){const text=String(raw).trim();if(!/^(?:\d+)(?:\.\d+)?$/.test(text))taskFail("INVALID_INPUT","Informe um limite numérico de 0,5 a 100 MB, em passos de 0,1.");const n=Number(text);if(!Number.isFinite(n)||n<0.5||n>100||Math.abs(n*10-Math.round(n*10))>1e-8)taskFail("INVALID_INPUT","Limite deve estar entre 0,5 e 100 MB, em passos de 0,1.");return Math.floor(Math.round(n*10)*1048576/10);}
+function parseAttachments(raw){if(!/^\d+$/.test(String(raw).trim()))taskFail("INVALID_INPUT","Máximo de anexos: inteiro de 1 a 100.");const n=Number(raw);if(!Number.isSafeInteger(n)||n<1||n>100)taskFail("INVALID_INPUT","Máximo de anexos: inteiro de 1 a 100.");return n;}
+function validateLimit(bytes){if(!Number.isSafeInteger(bytes)||!Array.from({length:996},(_,i)=>Math.floor((i+5)*1048576/10)).includes(bytes))taskFail("INVALID_INPUT","Limite informado fora da faixa de 0,5 a 100 MB, em passos de 0,1.");return bytes;}
+const budget={tokens:0,expanded:0,links:0};
+function budgetTick(kind,n=1){budget[kind]+=n;const cap={tokens:POLICY.tokens,expanded:POLICY.expandedBytes,links:POLICY.links}[kind];if(budget[kind]>cap)taskFail("RESOURCE_LIMIT",`Limite técnico excedido (${{tokens:"complexidade do arquivo",expanded:"dados descompactados, máx. "+POLICY.expandedBytes/1048576+" MB",links:"referências internas"}[kind]}). Operação interrompida sem saída parcial.`);}
+function inputGuard(bytes){if(!Number.isSafeInteger(bytes)||bytes<1||bytes>POLICY.inputBytes)taskFail("RESOURCE_LIMIT",`Arquivo vazio ou entrada total acima de ${POLICY.inputBytes/1048576} MB.`);}
+function outputGuard(n){if(n>POLICY.outputBytes)taskFail("RESOURCE_LIMIT",`Saída acima do limite técnico de ${POLICY.outputBytes/1048576} MB.`);}
+/* P0: leitor conservador, sem execução do conteúdo; somente recursos preserváveis. */
+class PdfIntegrityError extends TaskError { constructor(message,code="INVALID_PDF") { super(code,message); this.name="PdfIntegrityError"; } }
+const b2s = (u) => { let s = ""; for (let i=0;i<u.length;i+=32768) s += String.fromCharCode.apply(null,u.subarray(i,i+32768)); return s; };
+const s2b = (s) => { const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i)&255; return b; };
+function pdfFail(message) {const code=/protegido|senha/i.test(message)?"ENCRYPTED_PDF":/bloqueada para preservar|não suportad|não reconhecida|não é reescrito|ainda não|não são preservadas|complexa|Referência entre páginas/.test(message)?"UNSUPPORTED_PDF":"INVALID_PDF";throw new PdfIntegrityError(message,code);}
+function pdfSpace(s,i) {
+ while(i<s.length) { if(/[\x00\t\n\f\r ]/.test(s[i])) { i++; continue; } if(s[i]==="%") { while(i<s.length && s[i]!=="\n" && s[i]!=="\r") i++; continue; } break; } return i;
+}
+function pv(s,i,depth=0) {
+ budgetTick("tokens");
+ if(depth>POLICY.depth)taskFail("RESOURCE_LIMIT","Profundidade sintática excede 128 níveis.");
+ i=pdfSpace(s,i); if(i>=s.length) pdfFail("PDF truncado: valor incompleto.");
+ const c=s[i];
+ if(s.startsWith("<<",i)) {
+  const d=Object.create(null); i+=2;
+  for(;;) { i=pdfSpace(s,i); if(s.startsWith(">>",i)) return [d,i+2];
+   if(s[i]!=="/") pdfFail("Dicionário PDF inválido ou incompleto.");
+   const [k,j]=pv(s,i,depth+1),[v,end]=pv(s,j,depth+1);
+   if(Object.hasOwn(d,k)) pdfFail("Chave duplicada: não é seguro reescrever este PDF."); d[k]=v;i=end;
+  }
+ }
+ if(c==="[") { const a=[];i++;for(;;) {i=pdfSpace(s,i);if(s[i]==="]")return[a,i+1];const[v,j]=pv(s,i,depth+1);a.push(v);i=j;} }
+ if(c==="/") {let j=i+1;while(j<s.length && !/[\x00\s()<>\[\]{}\/%]/.test(s[j]))j++;return[s.slice(i,j),j];}
+ if(c==="(") {let n=1,j=i+1;while(n) {if(j>=s.length)pdfFail("PDF truncado: string sem fechamento.");const h=s[j++];if(h==="\\") {if(j>=s.length)pdfFail("Escape incompleto no PDF.");j++;}else if(h==="(")n++;else if(h===")")n--;}return[{s:s.slice(i,j)},j];}
+ if(c==="<") {const j=s.indexOf(">",i+1);if(j<0)pdfFail("String hexadecimal incompleta.");return[{s:s.slice(i,j+1)},j+1];}
+ const rest=s.slice(i),r=/^(\d+)\s+(\d+)\s+R(?=[\x00\s()<>\[\]{}\/%]|$)/.exec(rest);
+ if(r) {const n=Number(r[1]),g=Number(r[2]);if(!Number.isSafeInteger(n)||!Number.isInteger(g)||g>65535)pdfFail("Referência fora do intervalo suportado.");return[{r:n,g},i+r[0].length];}
+ const number=/^[+-]?(?:\d+\.?\d*|\.\d+)/.exec(rest);if(number) {const n=Number(number[0]);if(!Number.isFinite(n))pdfFail("Número inválido no PDF.");return[n,i+number[0].length];}
+ const kw=/^(true|false|null)(?=[\x00\s()<>\[\]{}\/%]|$)/.exec(rest);if(kw)return[kw[1],i+kw[0].length];
+ pdfFail("Estrutura PDF não suportada; nenhuma página foi reescrita.");
+}
+const ser=(v)=>v===null||v===undefined?"null":typeof v==="number"?String(v):typeof v==="string"?v:Array.isArray(v)?"["+v.map(ser).join(" ")+"]":v.r!==undefined?`${v.r} ${v.g||0} R`:v.s!==undefined?v.s:"<<"+Object.keys(v).map(k=>k+" "+ser(v[k])).join(" ")+">>";
+function refs(v,out=[]) {if(Array.isArray(v))v.forEach(x=>refs(x,out));else if(v&&typeof v==="object") {if(v.r!==undefined)out.push(v);else if(v.s===undefined)Object.values(v).forEach(x=>refs(x,out));}return out;}
+function dict(v) {return v&&typeof v==="object"&&!Array.isArray(v)&&v.r===undefined&&v.s===undefined;}
+function objAt(T,off,lenOf) {
+ if(!Number.isSafeInteger(off)||off<0||off>=T.length)pdfFail("Offset inválido no PDF.");
+ const h=/^(\d+)\s+(\d+)\s+obj\b/.exec(T.slice(off));if(!h)pdfFail("Referência de objeto inválida.");
+ const[v,endValue]=pv(T,off+h[0].length);let j=pdfSpace(T,endValue),ds=-1,de=-1;
+ if(T.startsWith("stream",j)) {
+  if(!dict(v))pdfFail("Stream sem dicionário válido.");
+  j+=6;const nl=/^[ \t]*(?:\r\n|\n|\r)/.exec(T.slice(j));if(!nl)pdfFail("Início de stream não suportado.");ds=j+nl[0].length;
+  let L=v["/Length"];if(L&&L.r!==undefined)L=lenOf?lenOf(L):null;
+  if(!Number.isSafeInteger(L)||L<0||ds+L>T.length)pdfFail("Comprimento do stream indisponível ou inconsistente; divisão bloqueada.");
+  de=ds+L;j=pdfSpace(T,de);if(!T.startsWith("endstream",j))pdfFail("Comprimento do stream não confere.");j=pdfSpace(T,j+9);
+ }
+ if(!T.startsWith("endobj",j))pdfFail("Objeto incompleto ou delimitador inválido.");
+ return {n:Number(h[1]),g:Number(h[2]),v,ds,de,end:j+6};
+}
+async function inflate(u) {
+ if(typeof DecompressionStream==="undefined")taskFail("CAPABILITY","Este navegador não oferece DecompressionStream para este PDF.");
+ const reader=new Blob([u]).stream().pipeThrough(new DecompressionStream("deflate")).getReader();const chunks=[];let total=0;
+ try {for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>POLICY.streamBytes)taskFail("RESOURCE_LIMIT",`Dado descompactado acima do limite de ${POLICY.streamBytes/1048576} MB.`);budgetTick("expanded",value.length);chunks.push(value);}const out=new Uint8Array(total);let i=0;for(const c of chunks){out.set(c,i);i+=c.length;}return out;}
+ catch(e){await reader.cancel().catch(()=>{});if(e instanceof TaskError)throw e;taskFail("INVALID_PDF","Stream Flate inválido ou truncado.");}finally{reader.releaseLock();}
+}
+function unpredict(d,cols) {
+ if(!Number.isSafeInteger(cols)||cols<1||d.length%(cols+1))pdfFail("Preditor PDF não suportado.");
+ const rows=d.length/(cols+1),out=new Uint8Array(rows*cols);
+ for(let r=0;r<rows;r++){const f=d[r*(cols+1)];if(f>4)pdfFail("Filtro de predição inválido.");for(let c=0;c<cols;c++){const x=d[r*(cols+1)+1+c],a=c?out[r*cols+c-1]:0,b=r?out[(r-1)*cols+c]:0,q=c&&r?out[(r-1)*cols+c-1]:0;let v=x;if(f===1)v+=a;else if(f===2)v+=b;else if(f===3)v+=Math.floor((a+b)/2);else if(f===4){const p=a+b-q,pa=Math.abs(p-a),pb=Math.abs(p-b),pc=Math.abs(p-q);v+=pa<=pb&&pa<=pc?a:pb<=pc?b:q;}out[r*cols+c]=v&255;}}return out;
+}
+async function decodedStream(o,u8,columns) {
+ let f=o.v["/Filter"],dp=o.v["/DecodeParms"];if(Array.isArray(f)){if(f.length!==1)pdfFail("Cadeia de filtros não suportada para divisão segura.");f=f[0];if(Array.isArray(dp))dp=dp[0];}
+ let d=u8.subarray(o.ds,o.de);if(f===undefined||f==="null"){}else if(f==="/FlateDecode")d=await inflate(d);else pdfFail("Filtro de compactação não suportado para divisão segura.");
+ if(dp&&dp!=="null") {if(!dict(dp))pdfFail("Parâmetros indiretos de filtro não suportados.");const pred=dp["/Predictor"]||1;if(pred!==1){if(pred<10||pred>15||(dp["/Colors"]||1)!==1||(dp["/BitsPerComponent"]||8)!==8)pdfFail("Preditor não suportado.");const cols=dp["/Columns"]||1;if(columns!==undefined&&cols!==columns)pdfFail("Colunas de xref inconsistentes.");d=unpredict(d,cols);}}
+ return d;
+}
+const unsupportedNames={"/Annots":"anotações, links ou carimbos","/AcroForm":"formulários","/Outlines":"marcadores","/StructTreeRoot":"estrutura de acessibilidade","/MarkInfo":"marcação estrutural","/Metadata":"metadados de catálogo","/Names":"nomes, destinos ou anexos","/PageLabels":"rótulos de páginas","/OpenAction":"ações do documento","/Perms":"permissões ou assinaturas","/ID":"identificadores documentais"};
+function guardKeys(d,allowed,where) {for(const k of Object.keys(d))if(!allowed.includes(k))pdfFail(`Divisão bloqueada para preservar ${unsupportedNames[k]||k} (${where}). Este recurso ainda não é reescrito por esta versão. O original permanece intacto.`);}
+async function pdfOpen(u8) {
+ inputGuard(u8.length);
+ const T=b2s(u8),header=/^%PDF-(\d\.\d)/.exec(T);if(!header)pdfFail("Cabeçalho PDF não suportado.");
+ const X=new Map(),cache=new Map(),streams=new Map(),loading=new Set();
+ const sx=T.lastIndexOf("startxref");if(sx<0)pdfFail("Referência xref ausente.");const m=/^\s*(\d+)/.exec(T.slice(sx+9));if(!m)pdfFail("Referência xref inválida.");const pos=Number(m[1]);let td;
+ if(T.startsWith("xref",pos)) {
+  let j=pos+4;for(;;){j=pdfSpace(T,j);if(T.startsWith("trailer",j)){td=pv(T,j+7)[0];break;}
+   const h=/^(\d+)\s+(\d+)\s*/.exec(T.slice(j));if(!h)pdfFail("Cabeçalho xref inválido.");const first=Number(h[1]),count=Number(h[2]);if(!Number.isSafeInteger(first)||!Number.isSafeInteger(count)||count>T.length/18)pdfFail("Tabela xref fora dos limites.");j+=h[0].length;
+   for(let k=0;k<count;k++){const r=/^(\d{10}) (\d{5}) ([nf])[ \t\r\n]*/.exec(T.slice(j));if(!r)pdfFail("Entrada xref inválida.");const n=first+k;if(X.size>=POLICY.objects)taskFail("RESOURCE_LIMIT","Tabela de referências excede 100000 objetos.");if(X.has(n))pdfFail("Entrada xref duplicada.");X.set(n,r[3]==="n"?{t:1,off:Number(r[1]),g:Number(r[2])}:{t:0});j+=r[0].length;}
+  }
+ } else {
+  const o=objAt(T,pos,null);td=o.v;if(!dict(td)||td["/Type"]!=="/XRef")pdfFail("Estrutura xref não suportada.");
+  const w=td["/W"];if(!Array.isArray(w)||w.length!==3||w.some(x=>!Number.isInteger(x)||x<0||x>6))pdfFail("Larguras xref não suportadas.");const row=w.reduce((a,b)=>a+b,0);if(!row)pdfFail("Xref sem largura.");
+  const idx=td["/Index"]||[0,td["/Size"]];if(!Array.isArray(idx)||idx.length%2||idx.some(x=>!Number.isSafeInteger(x)||x<0))pdfFail("Índice xref inválido.");
+  const d=await decodedStream(o,u8,row);let cursor=0;
+  for(let i=0;i<idx.length;i+=2){if(idx[i+1]>d.length/row)pdfFail("Contagem xref inconsistente.");for(let j=0;j<idx[i+1];j++,cursor+=row){if(cursor+row>d.length)pdfFail("Xref truncado.");const read=(a,n)=>{let v=0;for(let k=0;k<n;k++)v=v*256+d[cursor+a+k];return v;};const n=idx[i]+j,t=w[0]?read(0,w[0]):1,a=read(w[0],w[1]),b=read(w[0]+w[1],w[2]);if(X.size>=POLICY.objects)taskFail("RESOURCE_LIMIT","Tabela de referências excede 100000 objetos.");if(X.has(n))pdfFail("Entrada xref duplicada.");if(t===0)X.set(n,{t:0});else if(t===1)X.set(n,{t:1,off:a,g:b});else if(t===2)X.set(n,{t:2,stm:a,idx:b,g:0});else pdfFail("Tipo xref desconhecido.");}}
+ }
+ if(!dict(td)||!td["/Root"])pdfFail("Catálogo não encontrado.");
+ if(td["/Encrypt"]!==undefined)pdfFail("PDF protegido: divisão não suportada. O original não foi alterado.");
+ if(td["/Prev"]!==undefined||td["/XRefStm"]!==undefined)pdfFail("Divisão bloqueada: revisões incrementais ou xref híbrida ainda não são preservadas com segurança.");
+ guardKeys(td,["/Size","/Root","/Info","/Type","/W","/Index","/Length","/Filter","/DecodeParms"],"trailer");
+ const lenOf=(ref)=>{const x=X.get(ref.r);if(!x||x.t!==1||x.g!==(ref.g||0))return null;const o=objAt(T,x.off,null);return o.n===ref.r&&o.g===x.g&&typeof o.v==="number"?o.v:null;};
+ async function get(ref) {
+  if(ref===null||typeof ref!=="number"&&(!ref||!Number.isSafeInteger(ref.r)))pdfFail("Referência inválida.");
+  const n=typeof ref==="number"?ref:ref.r,x=X.get(n);if(!x||x.t===0)pdfFail("Dependência ausente no PDF; divisão bloqueada.");if(typeof ref!=="number"&&(ref.g||0)!==x.g)pdfFail("Geração de referência inconsistente.");if(cache.has(n))return cache.get(n);if(loading.has(n))pdfFail("Dependência circular de object stream.");loading.add(n);let o;
+  try {if(x.t===1){const a=objAt(T,x.off,lenOf);if(a.n!==n||a.g!==x.g)pdfFail("Xref aponta para objeto diferente.");o={...a,raw:u8.subarray(x.off,a.end)};}
+   else {let z=streams.get(x.stm);if(!z){const parent=await get(x.stm);if(parent.v["/Type"]!=="/ObjStm")pdfFail("Object stream inválido.");const d=await decodedStream(parent,u8),text=b2s(d),first=parent.v["/First"],count=parent.v["/N"];if(count>POLICY.objects)taskFail("RESOURCE_LIMIT","Object stream excede 100000 objetos.");if(!Number.isInteger(first)||first<0||first>text.length||!Number.isInteger(count)||count<0)pdfFail("Cabeçalho de object stream inválido.");const nums=text.slice(0,first).trim().split(/\s+/).map(Number);if(nums.length!==count*2||nums.some(v=>!Number.isSafeInteger(v)||v<0))pdfFail("Índice de object stream inválido.");z={text,first,nums};streams.set(x.stm,z);}const k=x.idx*2;if(z.nums[k]!==n)pdfFail("Objeto comprimido inconsistente.");const start=z.first+z.nums[k+1],end=k+3<z.nums.length?z.first+z.nums[k+3]:z.text.length;if(start<z.first||end<start||end>z.text.length)pdfFail("Objeto comprimido truncado.");const text=z.text.slice(start,end),[v,j]=pv(text,0);if(pdfSpace(text,j)!==text.length)pdfFail("Conteúdo excedente em objeto comprimido.");o={n,g:0,v,raw:s2b(`${n} 0 obj\n${text}\nendobj`)};}
+   cache.set(n,o);return o;
+  } finally {loading.delete(n);}
+ }
+ const root=await get(td["/Root"]),catalog=root.v;
+ if(!dict(catalog)||catalog["/Type"]!=="/Catalog")pdfFail("Catálogo inválido.");guardKeys(catalog,["/Type","/Pages","/Version"],"catálogo");
+ if(catalog["/Version"]!==undefined&&(typeof catalog["/Version"]!=="string"||!/^\/\d\.\d$/.test(catalog["/Version"])))pdfFail("Versão de catálogo indireta ou não reconhecida; divisão bloqueada.");
+ const pages=[],tree=new Set(),inherited=["/Resources","/MediaBox","/CropBox","/Rotate"];
+ async function walk(ref,inh,depth=0) {
+  if(depth>POLICY.depth)taskFail("RESOURCE_LIMIT","Árvore de páginas excede 128 níveis.");
+  if(!ref||ref.r===undefined||tree.has(ref.r))pdfFail("Árvore de páginas inválida, repetida ou profunda demais.");tree.add(ref.r);const obj=await get(ref),d=obj.v;if(!dict(d))pdfFail("Página sem dicionário.");const a={...inh};for(const k of inherited)if(d[k]!==undefined)a[k]=d[k];
+  if(d["/Type"]==="/Pages") {guardKeys(d,["/Type","/Parent","/Kids","/Count",...inherited],"árvore de páginas");if(!Array.isArray(d["/Kids"]))pdfFail("Filhos da árvore de páginas inválidos.");const before=pages.length;for(const kid of d["/Kids"])await walk(kid,a,depth+1);if(d["/Count"]!==pages.length-before)pdfFail("Contagem da árvore de páginas inconsistente.");}
+  else if(d["/Type"]==="/Page") {guardKeys(d,["/Type","/Parent",...inherited,"/Contents","/Group","/BleedBox","/TrimBox","/ArtBox","/UserUnit"],"página "+(pages.length+1));const keep={...a};for(const k of Object.keys(d))if(k!=="/Type"&&k!=="/Parent")keep[k]=d[k];if(keep["/MediaBox"]===undefined)pdfFail("Página sem dimensões.");if(pages.length>=POLICY.pages)taskFail("RESOURCE_LIMIT","Documento excede 5000 páginas.");pages.push({n:obj.n,g:obj.g,idx:pages.length,keep,set:new Set()});}
+  else pdfFail("Tipo desconhecido na árvore de páginas.");
+ }
+ await walk(catalog["/Pages"],{});if(!pages.length)pdfFail("O PDF não tem páginas.");
+ const forbidden=new Set([...tree,root.n]);
+ async function collect(value,set) {const q=refs(value);while(q.length){budgetTick("links");const ref=q.pop();const o=await get(ref);if(forbidden.has(o.n))pdfFail("Referência entre páginas ou catálogo: divisão bloqueada para preservar integridade.");if(set.has(o.n))continue;set.add(o.n);refs(o.v,q);}}
+ for(const page of pages)await collect(page.keep,page.set);
+ const common=new Set();if(td["/Info"]!==undefined)await collect(td["/Info"],common);
+ let maxN=0;for(const n of X.keys())maxN=Math.max(maxN,n);maxN=Math.max(maxN,Number(td["/Size"])||0)+1;if(!Number.isSafeInteger(maxN+1))pdfFail("Numeração PDF fora do intervalo suportado.");
+ return {safe:true,pages,cache,common,info:td["/Info"],version:header[1],catalogVersion:catalog["/Version"],maxN};
+}
+function buildPart(doc,list,measureOnly=false) {
+ if(!doc||doc.safe!==true||!list.length)pdfFail("Plano de divisão sem validação de integridade.");
+ const chunks=[],off=new Map();let len=0;
+ const push=(d)=>{const n=d.length;len+=n;outputGuard(len);if(!measureOnly)chunks.push(typeof d==="string"?s2b(d):d);};
+ push(`%PDF-${doc.version}\n`);push(new Uint8Array([37,226,227,207,211,10]));
+ const all=new Set(doc.common);list.forEach(p=>{if(doc.pages[p.idx]!==p)pdfFail("Página fora do documento validado.");p.set.forEach(n=>all.add(n));});
+ for(const n of [...all].sort((a,b)=>a-b)){const o=doc.cache.get(n);if(!o)pdfFail("Objeto não carregado.");off.set(n,[len,o.g]);push(o.raw);push("\n");}
+ const cat=doc.maxN,pgs=cat+1,add=(n,g,text)=>{if(off.has(n))pdfFail("Colisão de objetos no PDF de saída.");off.set(n,[len,g]);push(`${n} ${g} obj\n${text}\nendobj\n`);};
+ for(const p of list){if(!p.tail)p.tail=Object.keys(p.keep).map(k=>" "+k+" "+ser(p.keep[k])).join("");add(p.n,p.g,`<</Type/Page/Parent ${pgs} 0 R${p.tail}>>`);}
+ add(pgs,0,`<</Type/Pages/Count ${list.length}/Kids[${list.map(p=>`${p.n} ${p.g} R`).join(" ")}]>>`);
+ add(cat,0,`<</Type/Catalog/Pages ${pgs} 0 R${doc.catalogVersion?" /Version "+ser(doc.catalogVersion):""}>>`);
+ const nums=[...off.keys()].sort((a,b)=>a-b),xref=len;let t="xref\n0 1\n0000000000 65535 f \n";
+ for(let i=0;i<nums.length;){let j=i;while(j+1<nums.length&&nums[j+1]===nums[j]+1)j++;t+=`${nums[i]} ${j-i+1}\n`;for(let k=i;k<=j;k++){const[o,g]=off.get(nums[k]);if(o>9999999999)pdfFail("PDF de saída excede a capacidade da tabela xref.");t+=String(o).padStart(10,"0")+" "+String(g).padStart(5,"0")+" n \n";}i=j+1;}
+ push(t+`trailer\n<</Size ${pgs+1}/Root ${cat} 0 R${doc.info!==undefined?" /Info "+ser(doc.info):""}>>\nstartxref\n${xref}\n%%EOF\n`);
+ if(measureOnly)return len;const out=new Uint8Array(len);let cursor=0;for(const b of chunks){out.set(b,cursor);cursor+=b.length;}return out;
+}
+function splitOptions(limit,maxAttachments,balance) {
+ if(!Number.isSafeInteger(limit)||limit<1)throw new Error("Limite inválido em bytes.");
+ if(!Number.isInteger(maxAttachments)||maxAttachments<1)throw new Error("Máximo de anexos inválido.");return{limit,maxAttachments,balance:!!balance};
+}
+async function makeSplitPlan(source,options,isCurrent=()=>true) {
+ inputGuard(source.bytes.length);validateLimit(options.limit);parseAttachments(options.maxAttachments);
+ const {limit,maxAttachments,balance}=splitOptions(options.limit,options.maxAttachments,options.balance);
+ const checkpoint=async()=>{if(!isCurrent())throw new Error("__split_cancel__");await new Promise(r=>setTimeout(r,0));if(!isCurrent())throw new Error("__split_cancel__");};
+ await checkpoint();
+ if(source.bytes.length<=limit)return {kind:"original",parts:[{bytes:source.bytes,original:true,list:null}],limit,maxAttachments,overPages:[],exceedsAttachments:false};
+ const doc=source.doc||await pdfOpen(source.bytes);source.doc=doc;await checkpoint();
+ const memo=new Map();
+ const measure=(a,b)=>{const key=a+":"+b;if(!memo.has(key))memo.set(key,buildPart(doc,doc.pages.slice(a,b),true));return memo.get(key);};
+ async function partition(cap,maxParts=Infinity) {
+  const result=[];let start=0;
+  while(start<doc.pages.length){await checkpoint();let end;
+   if(measure(start,start+1)>cap)end=start+1;
+   else if(measure(start,doc.pages.length)<=cap)end=doc.pages.length;
+   else {let lo=start+1,hi=doc.pages.length;while(lo+1<hi){await checkpoint();const mid=Math.floor((lo+hi)/2);if(measure(start,mid)<=cap)lo=mid;else hi=mid;}end=lo;}
+   result.push({start,end,size:measure(start,end)});start=end;if(result.length>maxParts)return result;
+  }return result;
+ }
+ let ranges=await partition(limit);const oversize=ranges.filter(r=>r.size>limit);
+ if(balance&&ranges.length>1&&!oversize.length){const count=ranges.length;let lo=1,hi=limit,best=ranges;for(let i=0;i<14&&lo<hi;i++){await checkpoint();const mid=Math.floor((lo+hi)/2),candidate=await partition(mid,count);if(candidate.length<=count&&candidate.every(r=>r.size<=mid)){hi=mid;best=candidate;}else lo=mid+1;}ranges=best;}
+ let totalOutput=0;const parts=[];for(const range of ranges){await checkpoint();const list=doc.pages.slice(range.start,range.end),bytes=buildPart(doc,list);totalOutput+=bytes.length;outputGuard(totalOutput);if(bytes.length!==range.size)throw new Error("Falha de conferência: tamanho medido difere do arquivo gerado.");if(bytes.length>limit&&list.length!==1)throw new Error("Parte de múltiplas páginas excedeu o limite; exportação bloqueada.");parts.push({list,bytes,original:false});}
+ await checkpoint();const overPages=parts.filter(p=>p.bytes.length>limit).map(p=>({page:p.list[0].idx+1,bytes:p.bytes.length}));
+ return {kind:"split",parts,limit,maxAttachments,overPages,exceedsAttachments:parts.length>maxAttachments};
+}
 
-    <section class="work hidden" id="panel">
-      <div>
-        <div class="bar">
-          <p><strong id="count"></strong> · <span class="size" id="size"></span></p>
-          <div><button class="sec" id="addBtn" type="button">Adicionar mais</button> <button class="danger"
-              id="clearBtn" type="button">Limpar tudo</button></div>
-        </div>
-        <p class="muted">Arraste os cards ou use ↑ ↓ para reordenar. Clique na imagem para ampliar.</p>
-        <div class="grid" id="grid"></div>
-      </div>
-      <aside class="side">
-        <h3>Pré-visualização</h3>
-        <div class="opts">
-          <span><label for="ipp">Espaços por página</label><select id="ipp">
-              <option value="1">1</option>
-              <option value="2" selected>2</option>
-              <option value="4">4</option>
-            </select></span>
-          <span><label for="limit">Limite (MB)</label><input id="limit" type="number" min="0.5" max="50" step="0.1"
-              value="2" /></span>
-        </div>
-        <p class="muted">Verticais consecutivas formam par; horizontais ocupam uma linha. A ordem da lista é a ordem do
-          PDF.</p>
-        <div class="pages" id="pages"></div>
-        <div class="meter" id="meter"><i id="meterFill"></i></div>
-        <p id="meterText"></p>
-        <button class="primary" id="genBtn" type="button" disabled>Gerar PDF</button>
-      </aside>
-    </section>
-  </main>
-  <p class="status" id="status" role="status" aria-live="polite"></p>
-  <footer id="ver"></footer>
+function buildPdf(pages) {
+const enc = new TextEncoder(), chunks = [], offsets = [];
+let len = 0;
+const push = (d) => { const b = typeof d === 'string' ? enc.encode(d) : d; chunks.push(b); len += b.length;outputGuard(len); };
+const obj = (n, fn) => { offsets[n] = len; push(`${n} 0 obj\n`); fn(); push('\nendobj\n'); };
+let next = 3;
+const imgIds = pages.map((p) => p.items.map(() => next++));
+const pageIds = pages.map(() => ({ page: next++, content: next++ }));
+push('%PDF-1.4\n'); push(new Uint8Array([0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]));
+obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+obj(2, () => push(`<< /Type /Pages /Count ${pages.length} /Kids [${pageIds.map((p) => p.page + ' 0 R').join(' ')}] >>`));
+pages.forEach((pg, i) => pg.items.forEach((it, j) => obj(imgIds[i][j], () => {
+push(`<< /Type /XObject /Subtype /Image /Width ${it.px} /Height ${it.py} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${it.jpeg.length} >>\nstream\n`);
+push(it.jpeg); push('\nendstream');
+})));
+pages.forEach((pg, i) => {
+const { page, content } = pageIds[i], f = (n) => n.toFixed(2);
+const stream = pg.items.map((it, j) => `q ${f(it.w)} 0 0 ${f(it.h)} ${f(it.x)} ${f(it.y)} cm /Im${j} Do Q`).join('\n');
+const xo = pg.items.map((_, j) => `/Im${j} ${imgIds[i][j]} 0 R`).join(' ');
+obj(page, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(pg.width)} ${f(pg.height)}] /Resources << /XObject << ${xo} >> >> /Contents ${content} 0 R >>`));
+obj(content, () => push(`<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}\nendstream`));
+});
+const xref = len;
+push(`xref\n0 ${next}\n0000000000 65535 f \n`);
+for (let n = 1; n < next; n++) push(String(offsets[n]).padStart(10, '0') + ' 00000 n \n');
+push(`trailer\n<< /Size ${next} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+const out = new Uint8Array(len); let o = 0;
+for (const c of chunks) { out.set(c, o); o += c.length; }
+return out;
+}
+/* Worker dedicado por operação: cancelamento termina a execução inteira. */
+function workerProgress(data){self.postMessage({type:"progress",...data});}
+function mbText(n,dir){const v=n/1048576,k=dir==="up"?Math.ceil(v*100-1e-9)/100:dir==="down"?Math.floor(v*100+1e-9)/100:Math.round(v*100)/100;const t=k.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});return n>0&&t==="0,00"?"menos de 0,01 MB":t+" MB";}
+function requireCanvas(){if(typeof OffscreenCanvas==="undefined"||typeof createImageBitmap==="undefined")taskFail("CAPABILITY","Criação de imagens exige OffscreenCanvas e createImageBitmap no worker. Use um navegador compatível; não há processamento alternativo na interface.");}
+async function decodedImage(file){if(file.size>POLICY.imageBytes)taskFail("RESOURCE_LIMIT",`Imagem acima do limite de ${POLICY.imageBytes/1048576} MB.`);let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:"from-image"});}catch(e){taskFail("IMAGE_DECODE","Não foi possível decodificar uma imagem. Formato não suportado ou arquivo inválido.");}if(bmp.width*bmp.height>POLICY.imagePixels){bmp.close();taskFail("RESOURCE_LIMIT",`Imagem excede ${POLICY.imagePixels} pixels.`);}return bmp;}
+async function compareImageContents(files,existing=[]){
+ if(!globalThis.crypto?.subtle)taskFail("CAPABILITY","Comparação de imagens exige Web Crypto SHA-256 local. Nenhum arquivo foi descartado.");
+ const candidates=new Map();for(let i=0;i<existing.length;i++){const it=existing[i];if(!it.hash)taskFail("INTERNAL","Imagem anterior sem identificação de conteúdo.");const group=candidates.get(it.hash)||[];group.push({file:it.file,source:"existing",index:i});candidates.set(it.hash,group);}
+ const records=[];
+ for(let i=0;i<files.length;i++){if(files[i].size>POLICY.imageBytes)taskFail("RESOURCE_LIMIT","Imagem acima do limite de 50 MB.");const bytes=new Uint8Array(await files[i].arrayBuffer());const hash=Array.from(new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256",bytes)),b=>b.toString(16).padStart(2,"0")).join("");let duplicateOf=null;
+ for(const prior of candidates.get(hash)||[]){if(prior.file.size!==files[i].size)continue;const other=new Uint8Array(await prior.file.arrayBuffer());if(other.length===bytes.length&&bytes.every((v,j)=>v===other[j])){duplicateOf={source:prior.source,index:prior.index};break;}}
+ records.push({hash,duplicateOf});if(!duplicateOf){const group=candidates.get(hash)||[];group.push({file:files[i],source:"batch",index:i});candidates.set(hash,group);}workerProgress({stage:"compare",done:i+1,total:files.length,text:`Comparando conteúdo ${i+1}/${files.length} localmente…`});
+ }return records;
+}
+async function prepareImages(files,existingPixels,existing=[]){requireCanvas();if(files.length>POLICY.images)taskFail("RESOURCE_LIMIT","Lote excede 400 imagens.");const records=await compareImageContents(files,existing),results=[];let pixels=existingPixels||0;
+ for(let i=0;i<files.length;i++){const bmp=await decodedImage(files[i]);try{pixels+=bmp.width*bmp.height;if(pixels>POLICY.totalPixels)taskFail("RESOURCE_LIMIT","Seleção excede 120000000 pixels.");const scale=Math.min(1,320/Math.max(bmp.width,bmp.height));const c=new OffscreenCanvas(Math.max(1,Math.round(bmp.width*scale)),Math.max(1,Math.round(bmp.height*scale)));const g=c.getContext("2d");if(!g)taskFail("CAPABILITY","Canvas 2D indisponível.");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);const blob=await c.convertToBlob({type:"image/jpeg",quality:0.8});results.push({w:bmp.width,h:bmp.height,thumb:blob,...records[i]});workerProgress({stage:"prepare",done:i+1,total:files.length,text:`Lendo imagem ${i+1}/${files.length}`});}finally{bmp.close();}}return{images:results};}
+async function workerJpeg(o,dpi,quality){const im=o.im;const bmp=await decodedImage(im.file);try{if(bmp.width!==im.w||bmp.height!==im.h)taskFail("IMAGE_DECODE","Dimensões da imagem divergiram da seleção validada.");const px=Math.max(1,Math.min(im.w,Math.round(o.w/25.4*dpi))),py=Math.max(1,Math.round(px*im.h/im.w));const c=new OffscreenCanvas(px,py),g=c.getContext("2d");if(!g)taskFail("CAPABILITY","Canvas 2D indisponível.");g.fillStyle="#fff";g.fillRect(0,0,px,py);g.imageSmoothingQuality="high";g.drawImage(bmp,0,0,px,py);const blob=await c.convertToBlob({type:"image/jpeg",quality});if(blob.type!=="image/jpeg")taskFail("CAPABILITY","O navegador não codificou JPEG; geração bloqueada para evitar um stream PDF incompatível.");return{jpeg:new Uint8Array(await blob.arrayBuffer()),px,py};}finally{bmp.close();}}
+async function generateImages(data){requireCanvas();validateLimit(data.limit);const tries=[[200,0.88],[200,0.8],[160,0.8],[160,0.72],[130,0.72],[110,0.65]],MM=72/25.4,total=data.pages.reduce((n,p)=>n+p.length,0);if(!total||total>POLICY.images)taskFail("RESOURCE_LIMIT","Quantidade de imagens fora do limite de 1 a 200.");let pdf;
+ for(let k=0;k<tries.length;k++){let done=0,jpegBytes=0;const[dpi,q]=tries[k],out=[];workerProgress({stage:"try",k,state:"run",text:"processando…"});for(const page of data.pages){const images=[];for(const o of page){workerProgress({stage:"image",k,done,total,text:`Tentativa ${k+1}/6: imagem ${done+1}/${total}`});const j=await workerJpeg(o,dpi,q);jpegBytes+=j.jpeg.length;outputGuard(jpegBytes);images.push({...j,x:o.x*MM,y:(297-o.y-o.h)*MM,w:o.w*MM,h:o.h*MM});workerProgress({stage:"image",k,done:++done,total,text:`Tentativa ${k+1}/6: imagem ${done}/${total}`});}out.push({width:210*MM,height:297*MM,items:images});}
+ workerProgress({stage:"assemble",k,done:total,total,text:"Montando o PDF em processamento isolado…"});pdf=buildPdf(out);outputGuard(pdf.length);const fits=pdf.length<=data.limit;workerProgress({stage:"try",k,state:fits?"ok":"over",bytes:pdf.length,text:`${mbText(pdf.length,fits?"down":"up")} · ${fits?"dentro":"acima"} do limite`});if(fits){for(let j=k+1;j<tries.length;j++)workerProgress({stage:"try",k:j,state:"skip",text:"não necessária"});break;}}
+ return{pdf};
+}
+async function processPdf(data){inputGuard(data.file.size);const bytes=new Uint8Array(await data.file.arrayBuffer());if(!/^%PDF-\d\.\d/.test(b2s(bytes.subarray(0,16))))taskFail("INVALID_PDF","Cabeçalho PDF inválido.");workerProgress({stage:"pdf",text:"Verificando estrutura e tamanhos exatos…"});const source={bytes,doc:null},result=await makeSplitPlan(source,data.options);result.pages=source.doc?source.doc.pages.length:null;result.parts=result.parts.map(p=>({...p,list:p.list?p.list.map(x=>({idx:x.idx})):null}));return result;}
+/* ---------- Otimizar PDF (módulo à parte; não altera a criação nem a divisão) ---------- */
+/* Piso de leitura = o mesmo último passo do Criar PDF (110 DPI, qualidade 65%). Passos: [escala relativa, qualidade]; a resolução cai primeiro. */
+const OPT_FLOOR={dpi:110,quality:0.65};
+const OPT_STEPS=[[1,.80],[.94,.79],[.88,.78],[.82,.76],[.76,.74],[.70,.72],[.64,.70],[.58,.69],[.52,.68],[.46,.67],[.40,.66],[.34,.65],[.28,.65],[.22,.65]];
+const OPT_IMG_KEYS=["/Type","/Subtype","/Width","/Height","/ColorSpace","/BitsPerComponent","/Filter","/Length","/Name","/Interpolate"];
+async function optOpen(file){inputGuard(file.size);const bytes=new Uint8Array(await file.arrayBuffer());if(!/^%PDF-\d\.\d/.test(b2s(bytes.subarray(0,16))))taskFail("INVALID_PDF","Cabeçalho PDF inválido.");let doc;try{doc=await pdfOpen(bytes);}catch(e){if(e instanceof TaskError)e.message=e.message.replace(/([Dd])ivisão/g,(m,c)=>c==="D"?"Otimização":"otimização");throw e;}return{bytes,doc};}
+const optResolve=(doc,v)=>v&&v.r!==undefined?(doc.cache.get(v.r)||{}).v:v;
+/* Largura (em pt) em que cada imagem é desenhada, acompanhando q/Q/cm; a maior colocação vence (a mais conservadora). */
+function optPlacements(text){
+ const out=new Map(),stack=[],ops=[],re=/\/([^\s\/\[\]<>()%]+)|(-?(?:\d+\.?\d*|\.\d+))|([A-Za-z'"*]+)/g;let m=[1,0,0,1,0,0],t;
+ const mul=(a,b)=>[a[0]*b[0]+a[1]*b[2],a[0]*b[1]+a[1]*b[3],a[2]*b[0]+a[3]*b[2],a[2]*b[1]+a[3]*b[3],a[4]*b[0]+a[5]*b[2]+b[4],a[4]*b[1]+a[5]*b[3]+b[5]];
+ while((t=re.exec(text))){
+  if(t[1]!==undefined)ops.push({name:t[1]});else if(t[2]!==undefined)ops.push(Number(t[2]));
+  else{const op=t[3];
+   if(op==="q")stack.push(m);else if(op==="Q")m=stack.pop()||m;
+   else if(op==="cm"){const a=ops.slice(-6);if(a.length===6&&a.every(x=>typeof x==="number"))m=mul(a,m);}
+   else if(op==="Do"){const nm=ops[ops.length-1];if(nm&&nm.name!==undefined){const w=Math.hypot(m[0],m[1]);if(w>1&&w>(out.get(nm.name)||0))out.set(nm.name,w);}}
+   ops.length=0;}
+ }
+ return out;
+}
+function optImageInfo(o){
+ const v=o.v,hasStream=o.ds>=0,info={n:o.n,w:v["/Width"],h:v["/Height"],bytes:hasStream?o.de-o.ds:0,ok:false,reason:"",placed:0,fallback:0},extra=Object.keys(v).filter(k=>!OPT_IMG_KEYS.includes(k));
+ if(!hasStream)info.reason="imagem sem stream";
+ else if(extra.length)info.reason="recursos extras ("+extra.map(k=>k.slice(1)).join(", ")+")";
+ else if(Array.isArray(v["/Filter"]))info.reason="filtros em cadeia";
+ else if(v["/Filter"]!=="/DCTDecode")info.reason=v["/Filter"]===undefined?"imagem sem compressão JPEG":"formato "+String(v["/Filter"]).slice(1);
+ else if(v["/BitsPerComponent"]!==8)info.reason="profundidade de cor não suportada";
+ else if(v["/ColorSpace"]!=="/DeviceRGB"&&v["/ColorSpace"]!=="/DeviceGray")info.reason="espaço de cor não suportado";
+ else if(!Number.isInteger(info.w)||!Number.isInteger(info.h)||info.w<1||info.h<1)info.reason="dimensões inválidas";
+ else if(info.w*info.h>POLICY.imagePixels)info.reason="acima do limite de pixels";
+ else info.ok=true;
+ return info;
+}
+async function optCollect(bytes,doc){
+ const images=new Map(),pages=[];
+ for(let pi=0;pi<doc.pages.length;pi++){
+  const p=doc.pages[pi],mb=p.keep["/MediaBox"],mediaW=Array.isArray(mb)&&mb.length===4&&mb.every(Number.isFinite)?Math.abs(mb[2]-mb[0])||595:595;
+  const res=optResolve(doc,p.keep["/Resources"]),xo=dict(res)?optResolve(doc,res["/XObject"]):null,byName=new Map();
+  if(dict(xo))for(const k of Object.keys(xo))if(xo[k]&&xo[k].r!==undefined)byName.set(k.slice(1),xo[k].r);
+  let text="";const c=p.keep["/Contents"],list=Array.isArray(c)?c:c?[c]:[];
+  for(const r of list){const o=r&&r.r!==undefined?doc.cache.get(r.r):null;if(!o||!(o.ds>=0)){text="";break;}try{text+=b2s(await decodedStream(o,bytes))+"\n";}catch(e){if(e instanceof TaskError&&e.code==="RESOURCE_LIMIT")throw e;text="";break;}}
+  const placed=text&&!/\bBI\b/.test(text)?optPlacements(text):new Map(),ids=[];
+  for(const n of p.set){const o=doc.cache.get(n);if(o&&dict(o.v)&&o.v["/Subtype"]==="/Image"){let info=images.get(n);if(!info){info=optImageInfo(o);images.set(n,info);}info.fallback=Math.max(info.fallback,mediaW);ids.push(n);}}
+  for(const [name,w] of placed){const n=byName.get(name),info=n!==undefined?images.get(n):null;if(info)info.placed=Math.max(info.placed,w);}
+  pages.push(ids);
+ }
+ for(const info of images.values()){info.width=info.placed||info.fallback;info.dpi=info.ok?info.w/(info.width/72):0;}
+ return{images,pages};
+}
+async function optScan(data){
+ workerProgress({stage:"opt",text:"Analisando imagens e resoluções…"});
+ const {bytes,doc}=await optOpen(data.file),{images,pages}=await optCollect(bytes,doc);
+ const all=[...images.values()],ok=all.filter(i=>i.ok),reasons={};all.filter(i=>!i.ok).forEach(i=>{reasons[i.reason]=(reasons[i.reason]||0)+1;});
+ return{size:bytes.length,imageObjects:all.length,eligible:ok.length,imageBytes:all.reduce((n,i)=>n+i.bytes,0),reasons,
+  pages:pages.map(ids=>{const im=ids.map(n=>images.get(n)),good=im.filter(i=>i.ok);return{imgs:im.length,ok:good.length,dpi:good.length?Math.max(...good.map(i=>i.dpi)):0,bytes:im.reduce((n,i)=>n+i.bytes,0),reason:(im.find(i=>!i.ok)||{}).reason||""};})};
+}
+async function optReencode(data,info,nw,nh,quality){
+ let bmp;try{bmp=await createImageBitmap(new Blob([data],{type:"image/jpeg"}),{imageOrientation:"none"});}catch(e){return null;}
+ try{if(bmp.width!==info.w||bmp.height!==info.h)return null;
+  const c=new OffscreenCanvas(nw,nh),g=c.getContext("2d");if(!g)taskFail("CAPABILITY","Canvas 2D indisponível.");
+  g.fillStyle="#fff";g.fillRect(0,0,nw,nh);g.imageSmoothingQuality="high";g.drawImage(bmp,0,0,nw,nh);
+  const blob=await c.convertToBlob({type:"image/jpeg",quality});if(blob.type!=="image/jpeg")taskFail("CAPABILITY","O navegador não codificou JPEG; otimização bloqueada para evitar um PDF incompatível.");
+  return new Uint8Array(await blob.arrayBuffer());
+ }finally{bmp.close();}
+}
+/* Meta de tamanho: busca (bisseção) o passo MENOS agressivo cujo total cabe na meta; nunca passa do piso de leitura. */
+async function optRun(data){
+ const goal=data.target;if(!Number.isSafeInteger(goal)||goal<1)taskFail("INVALID_INPUT","Meta de tamanho inválida.");requireCanvas();
+ const {bytes,doc}=await optOpen(data.file),{images,pages}=await optCollect(bytes,doc),todo=[...images.values()].filter(i=>i.ok);
+ if(bytes.length<=goal)taskFail("INVALID_INPUT","O PDF já cabe na meta de tamanho; não há o que otimizar.");
+ const N=todo.length,last=OPT_STEPS.length-1,planned=2+Math.ceil(Math.log2(OPT_STEPS.length)),units=Math.max(1,N*planned),fits=t=>t<=goal*0.995;let evalNo=0;
+ const evaluate=async(k)=>{
+  evalNo++;const [sc,ql]=OPT_STEPS[k],replaced=new Map();let total=bytes.length;
+  for(let i=0;i<N;i++){
+   const info=todo[i],o=doc.cache.get(info.n),raw=bytes.subarray(o.ds,o.de);
+   const f=Math.min(1,Math.max(sc,OPT_FLOOR.dpi/info.dpi)),nw=Math.max(1,Math.round(info.w*f)),nh=Math.max(1,Math.round(info.h*nw/info.w)),q=Math.max(ql,OPT_FLOOR.quality);
+   const out=await optReencode(raw,info,nw,nh,q);
+   if(out&&out.length<raw.length*0.97){replaced.set(info.n,{data:out,w:nw,h:nh});total+=out.length-raw.length;}
+   workerProgress({stage:"opt",done:Math.min(units,(evalNo-1)*N+i+1),total:units,text:`Tentativa ${evalNo}: imagem ${i+1} de ${N}`});
+  }
+  return{k,total,replaced};
+ };
+ let chosen=await evaluate(0);
+ if(!fits(chosen.total)){
+  const floor=await evaluate(last);chosen=floor;
+  if(fits(floor.total)){let lo=0,hi=last;while(hi-lo>1){const mid=(lo+hi)>>1,r=await evaluate(mid);if(fits(r.total)){hi=mid;chosen=r;}else lo=mid;}}
+ }
+ workerProgress({stage:"opt",done:units,total:units,text:"Montando e conferindo o PDF…"});
+ const replaced=chosen.replaced;let out=null,pv=null;
+ if(replaced.size){
+  const cache=new Map(doc.cache);
+  for(const [n,r] of replaced){const o=doc.cache.get(n),nd={...o.v,"/Width":r.w,"/Height":r.h,"/ColorSpace":"/DeviceRGB","/Length":r.data.length},head=s2b(`${o.n} ${o.g} obj\n${ser(nd)}\nstream\n`),tail=s2b("\nendstream\nendobj"),rawObj=new Uint8Array(head.length+r.data.length+tail.length);rawObj.set(head,0);rawObj.set(r.data,head.length);rawObj.set(tail,head.length+r.data.length);cache.set(n,{...o,v:nd,raw:rawObj});}
+  const pdf=buildPart({...doc,cache},doc.pages),check=await pdfOpen(pdf);
+  if(check.pages.length!==doc.pages.length)taskFail("INTERNAL","A conferência do PDF otimizado falhou; nenhuma saída foi liberada.");
+  if(pdf.length<bytes.length*0.98){
+   out=pdf;let pick=null,score=9;
+   for(const [n,r] of replaced){const info=images.get(n),ratio=r.w/info.w,sc=ratio<0.999?ratio:2-(1-r.data.length/(info.bytes||1));if(sc<score){score=sc;pick={n,r,info};}}
+   if(pick){const o=doc.cache.get(pick.n);pv={page:pages.findIndex(ids=>ids.includes(pick.n))+1,w0:pick.info.w,h0:pick.info.h,w1:pick.r.w,h1:pick.r.h,before:bytes.slice(o.ds,o.de),after:pick.r.data};}
+  }
+ }
+ const size=n=>replaced.has(n)?replaced.get(n).data.length:images.get(n).bytes;
+ return{before:bytes.length,after:out?out.length:bytes.length,target:goal,reached:!!out&&out.length<=goal,eligible:N,replaced:replaced.size,kept:N-replaced.size,
+  scale:OPT_STEPS[chosen.k][0],quality:Math.max(OPT_STEPS[chosen.k][1],OPT_FLOOR.quality),pdf:out,preview:pv,
+  pages:pages.map(ids=>({before:ids.reduce((n,i)=>n+images.get(i).bytes,0),after:ids.reduce((n,i)=>n+size(i),0)}))};
+}
+self.onmessage=async(event)=>{const {kind,data}=event.data;try{budget.tokens=0;budget.expanded=0;budget.links=0;let result;if(kind==="pdf")result=await processPdf(data);else if(kind==="prepare")result=await prepareImages(data.files,data.existingPixels,data.existing||[]);else if(kind==="generate")result=await generateImages(data);else if(kind==="optscan")result=await optScan(data);else if(kind==="optrun")result=await optRun(data);else taskFail("INTERNAL","Operação desconhecida.");const transfer=[];if(result.pdf)transfer.push(result.pdf.buffer);if(result.parts)for(const part of result.parts)transfer.push(part.bytes.buffer);self.postMessage({type:"result",result},[...new Set(transfer)]);}catch(e){self.postMessage({type:"error",code:e instanceof TaskError?e.code:"INTERNAL",message:e instanceof TaskError?e.message:"Falha interna no processamento local. Nenhuma saída foi liberada."});}};
 
-  <div class="lb hidden" id="lb" role="dialog" aria-modal="true" aria-label="Visualização ampliada">
-    <button class="sec" id="lbPrev" type="button" aria-label="Anterior">←</button>
-    <img id="lbImg" alt="Imagem ampliada" />
-    <button class="sec" id="lbNext" type="button" aria-label="Próxima">→</button>
-    <button class="danger" id="lbClose" type="button" aria-label="Fechar"
-      style="position:absolute;top:14px;right:14px">×</button>
-  </div>
 
-  <div class="ov hidden" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-    <div class="dlg">
-      <div class="dlg-h">
-        <h2 id="helpTitle">Como usar o OptimizerPDF</h2><button class="sec" id="helpClose" type="button"
-          aria-label="Fechar">×</button>
-      </div>
-      <div class="dlg-b">
-        <h3>Como funciona</h3>
-        <ol>
-          <li><b>Selecione</b> os prints (JPG, PNG, WebP, GIF, BMP ou AVIF) ou arraste-os para qualquer lugar da página.
-          </li>
-          <li><b>Organize</b> a ordem: arraste os cards ou use ↑ ↓. Clique na imagem para ampliar e em × para remover.
-          </li>
-          <li><b>Escolha</b> quantos espaços por página (1, 2 ou 4) e confira o resultado na pré-visualização.</li>
-          <li><b>Gere</b> o PDF: o arquivo é baixado direto, sem janela de impressão.</li>
-        </ol>
-        <h3>Ordem e layout das páginas</h3>
-        <ul>
-          <li>A ordem da lista é a ordem do PDF.</li>
-          <li>Duas imagens verticais seguidas ficam lado a lado. Imagens horizontais ocupam uma linha inteira.</li>
-          <li>Cada página comporta no máximo 2 linhas. Imagens pequenas não são ampliadas.</li>
-        </ul>
-        <h3>Tamanho do PDF</h3>
-        <ul>
-          <li>O limite padrão é de 2 MB e pode ser alterado no campo <b>Limite (MB)</b>.</li>
-          <li>Ao gerar, o app reduz a resolução e a qualidade das imagens, em etapas, até o PDF caber no limite. Uma
-            janela mostra o andamento (pode levar alguns segundos) e permite cancelar.</li>
-          <li>O valor "originais" na tela é a soma dos arquivos de origem, não o tamanho do PDF. O tamanho real aparece
-            no medidor depois de gerar.</li>
-          <li>Se mesmo na menor qualidade o PDF passar do limite, o app mostra os tamanhos e pergunta se você quer
-            salvar assim mesmo. Nada é baixado sem a sua confirmação.</li>
-          <li>Textos muito pequenos podem perder nitidez quando a qualidade é reduzida. Abra o PDF e confira antes de
-            enviar.</li>
-        </ul>
-        <h3>Nome e local do arquivo</h3>
-        <ul>
-          <li>O nome padrão é <code id="helpName"></code> (data de hoje).</li>
-          <li>O arquivo vai para a pasta de downloads do navegador, ou para o local que ele pedir. Renomeie se o seu
-            procedimento exigir outro nome.</li>
-        </ul>
-        <h3>Privacidade</h3>
-        <ul>
-          <li>As imagens ficam só neste computador e nada é enviado a servidores.</li>
-          <li>Ao fechar ou recarregar a página, as imagens são descartadas. Gere o PDF antes de sair.</li>
-          <li>Formatos não compatíveis (como HEIC) podem não ser lidos. Converta para JPG ou PNG antes.</li>
-        </ul>
-      </div>
-      <div class="dlg-f"><button class="primary" id="helpOk" type="button">Entendi</button></div>
-    </div>
-  </div>
+</script>
+<script>
 
-  <div class="ov hidden" id="over" role="alertdialog" aria-modal="true" aria-labelledby="osTitle"
-    aria-describedby="osDesc">
-    <div class="dlg" style="width:min(480px,100%)">
-      <div class="dlg-h">
-        <h2 id="osTitle">O PDF ficou acima do limite</h2>
-      </div>
-      <div class="dlg-b">
-        <p id="osDesc" style="margin:14px 0 0">Mesmo com a qualidade reduzida ao mínimo, o PDF gerado ultrapassou o
-          limite definido. Nada foi baixado ainda.</p>
-        <dl class="os">
-          <dt>Tamanho original (soma dos arquivos)</dt>
-          <dd id="osOrig"></dd>
-          <dt>Tamanho do PDF gerado</dt>
-          <dd id="osPdf" class="bad"></dd>
-          <dt>Limite definido</dt>
-          <dd id="osLimit"></dd>
-          <dt>Excedente</dt>
-          <dd id="osOver" class="bad"></dd>
-        </dl>
-        <p class="muted">Para reduzir o tamanho, escolha <b>Não salvar</b>, remova imagens ou aumente o limite e gere
-          novamente.</p>
-      </div>
-      <div class="dlg-f"><button class="sec" id="osYes" type="button">Salvar mesmo assim</button><button class="primary"
-          id="osNo" type="button">Não salvar</button></div>
-    </div>
-  </div>
 
-  <div class="ov hidden" id="prog" role="dialog" aria-modal="true" aria-labelledby="pgTitle" aria-describedby="pgNote">
-    <div class="dlg" style="width:min(520px,100%)">
-      <div class="dlg-h">
-        <h2 id="pgTitle">Gerando o PDF…</h2><span id="pgTime">0 s</span>
-      </div>
-      <div class="dlg-b">
-        <p class="muted" id="pgNote" style="margin:14px 0 12px">O app testa qualidades diferentes até o PDF caber no
-          limite de <b id="pgLimit"></b>. Se uma tentativa passar do limite, ele tenta automaticamente uma versão mais
-          leve. Isso pode levar alguns segundos. Não feche a página.</p>
-        <div class="pbar" id="pgBar" role="progressbar" aria-label="Progresso da geração do PDF" aria-valuemin="0"
-          aria-valuemax="100" aria-valuenow="0"><i id="pgFill"></i></div>
-        <p class="pgline" id="pgLine"></p>
-        <ol class="tries" id="pgTries"></ol>
-      </div>
-      <div class="dlg-f"><button class="sec" id="pgCancel" type="button">Cancelar</button></div>
-    </div>
-  </div>
+/* Limites técnicos preventivos; não são promessa de capacidade do dispositivo. */
+const POLICY=Object.freeze({inputBytes:209715200,outputBytes:419430400,streamBytes:67108864,expandedBytes:268435456,pages:10000,objects:200000,tokens:4000000,links:2000000,depth:256,images:400,imageBytes:52428800,imagePixels:48000000,totalPixels:240000000,timeoutMs:120000});
+class TaskError extends Error {constructor(code,message){super(message);this.name="TaskError";this.code=code;}}
+const taskFail=(code,message)=>{throw new TaskError(code,message);};
+function parseSize(raw){const text=String(raw).trim();if(!/^(?:\d+)(?:\.\d+)?$/.test(text))taskFail("INVALID_INPUT","Informe um limite numérico de 0,5 a 100 MB, em passos de 0,1.");const n=Number(text);if(!Number.isFinite(n)||n<0.5||n>100||Math.abs(n*10-Math.round(n*10))>1e-8)taskFail("INVALID_INPUT","Limite deve estar entre 0,5 e 100 MB, em passos de 0,1.");return Math.floor(Math.round(n*10)*1048576/10);}
+function parseAttachments(raw){if(!/^\d+$/.test(String(raw).trim()))taskFail("INVALID_INPUT","Máximo de anexos: inteiro de 1 a 100.");const n=Number(raw);if(!Number.isSafeInteger(n)||n<1||n>100)taskFail("INVALID_INPUT","Máximo de anexos: inteiro de 1 a 100.");return n;}
+function validateLimit(bytes){if(!Number.isSafeInteger(bytes)||!Array.from({length:996},(_,i)=>Math.floor((i+5)*1048576/10)).includes(bytes))taskFail("INVALID_INPUT","Limite informado fora da faixa de 0,5 a 100 MB, em passos de 0,1.");return bytes;}
+const budget={tokens:0,expanded:0,links:0};
+function budgetTick(kind,n=1){budget[kind]+=n;const cap={tokens:POLICY.tokens,expanded:POLICY.expandedBytes,links:POLICY.links}[kind];if(budget[kind]>cap)taskFail("RESOURCE_LIMIT",`Limite técnico excedido (${{tokens:"complexidade do arquivo",expanded:"dados descompactados, máx. "+POLICY.expandedBytes/1048576+" MB",links:"referências internas"}[kind]}). Operação interrompida sem saída parcial.`);}
+function inputGuard(bytes){if(!Number.isSafeInteger(bytes)||bytes<1||bytes>POLICY.inputBytes)taskFail("RESOURCE_LIMIT",`Arquivo vazio ou entrada total acima de ${POLICY.inputBytes/1048576} MB.`);}
+function outputGuard(n){if(n>POLICY.outputBytes)taskFail("RESOURCE_LIMIT",`Saída acima do limite técnico de ${POLICY.outputBytes/1048576} MB.`);}
 
-  <script>
-    /* OptimizerPDF v1.5.0 — JS puro, sem dependências, sem acesso à rede. */
-    const BRAND = 'OptimizerPDF', VERSION = '1.5.0';
-    const $ = (id) => document.getElementById(id);
-    const MM = 72 / 25.4, PW = 210, PH = 297, MX = 12, MY = 14, GX = 3, GY = 5; // geometria da página em mm
-    const items = [];
-    let ipp = 2, lbIndex = -1, lastPdfSize = 0, busy = false, raf = 0;
-    let dragFrom = null;   // índice do card sendo reordenado (arrasto interno); null = nenhum
 
-    const zone = $('zone'), fileInput = $('fileInput'), statusEl = $('status'), panel = $('panel'),
-      countEl = $('count'), sizeEl = $('size'), grid = $('grid'), pagesBox = $('pages'),
-      genBtn = $('genBtn'), clearBtn = $('clearBtn'), limitInput = $('limit'),
-      lb = $('lb'), lbImg = $('lbImg');
-    lbImg.draggable = false;
-    const meter = $('meter'), meterFill = $('meterFill'), meterText = $('meterText');
-    function hl(id, on) {document.querySelectorAll(`[data-id="${id}"]`).forEach((n) => n.classList.toggle('hl', on));}
+/* OptimizerPDF — JS puro, sem dependências, sem acesso à rede. */
+const BRAND = "OptimizerPDF";
+const $ = (id) => document.getElementById(id);
+const MM = 72 / 25.4, PW = 210, PH = 297, MX = 12, MY = 14, GX = 3, GY = 5; // geometria da página em mm
+const items = [];
+let ipp = 2, lbIndex = -1, lastPdfSize = 0, busy = false, raf = 0;
+let dragFrom = null; // índice do card sendo reordenado (arrasto interno); null = nenhum
+const loadCard = $('loadCard');
+const zone = $('zone'), fileInput = $('fileInput'), statusEl = $('status'), panel = $('panel'),
+countEl = $('count'), sizeEl = $('size'), grid = $('grid'), pagesBox = $('pages'),
+genBtn = $('genBtn'), clearBtn = $('clearBtn'), limitInput = $('limit'),
+lb = $('lb'), lbImg = $('lbImg');
+lbImg.draggable = false;
+const meter = $('meter'), meterFill = $('meterFill'), meterText = $('meterText');
+function hl(id, on) { document.querySelectorAll(`[data-id="${id}"]`).forEach((n) => n.classList.toggle('hl', on)); }
+$('brand').textContent = BRAND;
+document.title = BRAND;
+$('hdrTitle').textContent = BRAND;
+/* Gerência única dos diálogos: foco, Escape, Tab, isolamento e retorno estável. */
+let modalState=null,modalFocusGuard=false;
+function focusToken(node=document.activeElement){if(!node)return null;if(node.dataset?.focusKey)return{key:node.dataset.focusKey};if(node.id)return{id:node.id};return{node};}
+function resolveFocus(token){if(!token)return null;if(token.key)return Array.from(document.querySelectorAll("[data-focus-key]")).find(n=>n.dataset.focusKey===token.key)||null;if(token.id)return $(token.id);return token.node||null;}
+function usableFocus(node){return !!node&&node!==document.body&&node.isConnected!==false&&!node.disabled&&!node.closest(".hidden,[hidden],[inert]");}
+function restoreFocus(token){const target=resolveFocus(token);if(usableFocus(target)){target.focus();return;}const fallback=activeOperation?opCancelButton():mode==="history"?$("historyBtn"):mode==="opt"?(optDoc?$("optRun"):$("optBtn")):mode==="img"?(items.length?$("addBtn"):$("selectBtn")):mode==="pdf"?(spDoc?$("spClear"):$("pdfBtn")):$("cardImg");if(usableFocus(fallback))fallback.focus();}
+function modalButtons(root){return Array.from(root.querySelectorAll("button,[href],input,select,textarea,[tabindex]")).filter(n=>!n.disabled&&n.getAttribute("tabindex")!=="-1"&&!n.closest(".hidden,[hidden],[inert]"));}
+function openManagedDialog(id,initialId,onEscape,returnToken=focusToken()){
+ if(modalState)closeManagedDialog(modalState.id,false);const root=$(id),siblings=[];root.classList.remove("hidden");root.setAttribute("tabindex","-1");
+ for(const sibling of document.body.children){if(sibling===root||["SCRIPT","STYLE"].includes(sibling.tagName))continue;siblings.push({node:sibling,inert:sibling.inert,hidden:sibling.getAttribute("aria-hidden")});sibling.inert=true;sibling.setAttribute("aria-hidden","true");}
+ modalState={id,root,onEscape,returnToken,siblings};document.body.classList.add("modal");const initial=initialId?$(initialId):modalButtons(root)[0];(initial&&!initial.disabled?initial:root).focus();
+}
+function closeManagedDialog(id,restore=true){const state=modalState;if(!state||state.id!==id)return;modalState=null;state.root.classList.add("hidden");for(const s of state.siblings){s.node.inert=s.inert;if(s.hidden===null)s.node.removeAttribute("aria-hidden");else s.node.setAttribute("aria-hidden",s.hidden);}document.body.classList.remove("modal");if(restore)restoreFocus(state.returnToken);}
+function handleModalKey(e){const state=modalState;if(!state)return false;
+ if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();state.onEscape?.();return true;}
+ if(e.key==="Tab"){const buttons=modalButtons(state.root),i=buttons.indexOf(document.activeElement);e.preventDefault();e.stopImmediatePropagation();if(!buttons.length)state.root.focus();else buttons[e.shiftKey?(i<=0?buttons.length-1:i-1):(i<0||i===buttons.length-1?0:i+1)].focus();return true;}
+ if(state.id==="lb"&&["ArrowLeft","ArrowRight"].includes(e.key)){e.preventDefault();e.stopImmediatePropagation();stepLb(e.key==="ArrowLeft"?-1:1);return true;}return false;
+}
+document.addEventListener("keydown",handleModalKey,true);
+document.addEventListener("focusin",()=>{if(!modalState||modalFocusGuard||modalState.root.contains(document.activeElement))return;modalFocusGuard=true;(modalButtons(modalState.root)[0]||modalState.root).focus();modalFocusGuard=false;},true);
+function syncLightbox(){if(lbIndex<0||lbIndex>=items.length)return;const it=items[lbIndex];lbImg.src=it.url;lbImg.alt=`Imagem ${lbIndex+1}: ${it.file.name}`;$("lbCaption").textContent=`Imagem ${lbIndex+1} de ${items.length} · ${it.file.name}`;$("lbPrev").disabled=lbIndex===0;$("lbNext").disabled=lbIndex===items.length-1;}
+function openLb(i){if(denyMutation())return;if(i<0||i>=items.length)return;lbIndex=i;syncLightbox();openManagedDialog("lb","lbClose",closeLb,{key:items[i].id+":open"});}
+function closeLb(){lbIndex=-1;lbImg.removeAttribute("src");closeManagedDialog("lb");}
+function stepLb(d){const n=lbIndex+d;if(n<0||n>=items.length)return;lbIndex=n;syncLightbox();if(document.activeElement.disabled)$("lbClose").focus();}
+function openHelp(){if(denyMutation())return;$("helpName").textContent=`PDFGerado__${new Date().toLocaleDateString("sv-SE")}.pdf`;openManagedDialog("help","helpClose",closeHelp);}
+function closeHelp(){closeManagedDialog("help");}
+function captureGridFocus(){const node=document.activeElement;if(node?.dataset?.focusKey&&grid.contains(node))return focusToken(node);return null;}
+function focusImageAction(id,action){restoreFocus({key:id+":"+action});}
+/* Comparação por bytes, nunca por nome/tamanho/data. SHA-256 só pré-seleciona candidatos. */
+function duplicateChoices(result){const matches=[],unique=[];result.images.forEach((meta,index)=>{const d=meta.duplicateOf;if(!d){unique.push(index);return;}const name=d.source==="existing"?items[d.index].file.name:result.names[d.index];matches.push({index,prior:{name,where:d.source==="existing"?`seleção atual, posição ${d.index+1}`:`novo lote, posição ${d.index+1}`}});});return{matches,unique};}
+async function decideDuplicates(op,result,files){const {matches,unique}=duplicateChoices({...result,names:files.map(f=>f.name)});if(!matches.length)return files.map((_,i)=>i);
+ operationStage(op,"duplicates");$("dupSummary").textContent=`${matches.length} repetição(ões) com os mesmos bytes. Nenhuma imagem foi excluída. Escolha o que adicionar; o lote só será aplicado após sua decisão.`;
+ $("dupList").replaceChildren(...matches.map(({index,prior})=>el("li","",`${files[index].name} — mesmos bytes de ${prior.name} (${prior.where}).`)));
+ return new Promise((resolve,reject)=>{let settled=false;const cancel=()=>finish("cancel");const finish=choice=>{if(settled)return;settled=true;op.cancelHandlers.delete(cancel);closeManagedDialog("duplicates",false);if(choice==="cancel"){reject(new TaskError("CANCELLED","Importação cancelada. A seleção anterior foi mantida."));return;}resolve(choice==="unique"?unique:files.map((_,i)=>i));};op.cancelHandlers.add(cancel);
+ $("dupAll").onclick=()=>finish("all");$("dupUnique").onclick=()=>finish("unique");$("dupCancel").onclick=cancel;openManagedDialog("duplicates","dupCancel",cancel,op.returnFocus);
+ });
+}
 
-    $('brand').textContent = BRAND;
-    $('ver').textContent = `OptimizerPDF · v${VERSION} · Desenvolvido por Gui Stelmach`;
-    document.title = BRAND;
+/* ---------- painel de carregamento das imagens: progresso real vindo do worker ---------- */
+function isImporting(){const st=activeOperation?.stage;return st==="loading-images"||st==="duplicates"||st==="loading-pdf"||st==="optimizing";}
+function opCancelButton(){return isImporting()?$("loadCancel"):$("operationCancel");}
+/* Pesos: verificação de repetidas 25% do tempo, criação das miniaturas 75% (é a etapa mais lenta). */
+/* Variante visual do cartão: "img" (progresso real) ou "pdf" (barra contínua, sem porcentagem, pois a leitura do PDF não informa andamento). */
+function loadMode(kind){const pdf=kind==="pdf";$("loadPct").classList.toggle("hidden",pdf);$("loadBar").classList.toggle("indet",pdf);if(pdf){$("loadBar").removeAttribute("aria-valuenow");$("loadFill").style.width="";}
+ $("loadSkel").classList.toggle("skel-pages",pdf);$("loadNote").textContent=(pdf?"O PDF fica":"As imagens ficam")+" neste computador. Você pode cancelar a qualquer momento.";}
+function loadOpenPdf(name){
+ loadState=null;loadMode("pdf");msg("");
+ $("loadTitle").textContent="Lendo o PDF…";$("loadLine").textContent=name;
+ $("loadSkel").replaceChildren(...Array.from({length:4},()=>el("span","skel")));$("loadAnnounce").textContent="Lendo o PDF…";
+ const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ if(loadCard.scrollIntoView)loadCard.scrollIntoView({block:"nearest",behavior:reduce?"auto":"smooth"});
+}
+function loadOpen(total){
+ loadMode("img");msg("");const skel=Math.min(total,10);loadState={total,skel,phase:""};
+ $("loadTitle").textContent=`Preparando ${total} ${total===1?"imagem":"imagens"}…`;
+ $("loadSkel").replaceChildren(...Array.from({length:skel},()=>el("span","skel")));
+ loadProgress({stage:"compare",done:0,total});
+ const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ if(loadCard.scrollIntoView)loadCard.scrollIntoView({block:"nearest",behavior:reduce?"auto":"smooth"});
+}
+function loadProgress(m){
+ const s=loadState;if(!s)return;const t=m.total||s.total||1,done=Math.min(m.done||0,t);
+ const finish=m.stage==="finish",thumbs=m.stage==="prepare";
+ const frac=finish?1:thumbs?0.25+0.75*done/t:0.25*done/t,pct=Math.min(100,Math.floor(frac*100));
+ $("loadFill").style.width=pct+"%";$("loadBar").setAttribute("aria-valuenow",String(pct));$("loadPct").textContent=pct+"%";
+ const phase=finish?"Finalizando":thumbs?"Criando miniaturas":"Verificando imagens repetidas";
+ $("loadLine").textContent=finish?"Finalizando…":`${phase}… ${done} de ${t}`;
+ const ready=Math.floor((finish?1:thumbs?done/t:0)*s.skel+1e-9);
+ Array.from($("loadSkel").children).forEach((n,i)=>n.classList.toggle("done",i<ready));
+ if(phase!==s.phase){s.phase=phase;$("loadAnnounce").textContent=phase+"…";}
+}
 
-    /* ---------- utilidades ---------- */
-    function el(tag, cls, text) {
-      const e = document.createElement(tag);
-      if (tag === 'img') e.draggable = false;
-      if (cls) e.className = cls;
-      if (text !== undefined) e.textContent = text;
-      return e;
-    }
-    function fmt(b) {
-      if (!b) return '0 KB';
-      const u = ['B', 'KB', 'MB', 'GB']; let i = 0;
-      while (b >= 1024 && i < 3) {b /= 1024; i++;}
-      return (i === 0 ? Math.round(b) : b.toFixed(1).replace(/\.0$/, '')) + ' ' + u[i];
-    }
-    const limitBytes = () => (Number(limitInput.value) || 2) * 1048576;
-    function msg(text, isErr) {statusEl.textContent = text || ''; statusEl.classList.toggle('err', !!isErr);}
-    const isImg = (f) => (f.type && f.type.startsWith('image/')) || /\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name);
-    const revoke = (u) => {if (u) URL.revokeObjectURL(u);};
+/* Uma operação ativa; o token identifica a seleção/configuração imutáveis. */
+let activeOperation=null,operationSequence=0,imageRevision=0,downloadInProgress=false,loadState=null;
+const labels={"duplicates":"Decidindo sobre imagens repetidas","loading-images":"Lendo imagens","loading-pdf":"Lendo novo PDF","planning":"Analisando PDF","generating":"Gerando PDF","confirming":"Aguardando decisão sobre excesso","downloading":"Solicitando downloads","optimizing":"Otimizando PDF"};
+/* Tamanhos na interface sempre em MB (1 MB = 1.048.576 bytes, o mesmo critério do Explorador de Arquivos do Windows).
+   dir "up"/"down" arredonda para cima/baixo, para que um arquivo acima do limite nunca apareça como "igual ao limite". */
+function fmtMB(n,dir){const v=Number(n)/1048576,k=dir==="up"?Math.ceil(v*100-1e-9)/100:dir==="down"?Math.floor(v*100+1e-9)/100:Math.round(v*100)/100;const t=k.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});return Number(n)>0&&t==="0,00"?"menos de 0,01 MB":t+" MB";}
+const fmtFit=(n,limit)=>fmtMB(n,limit==null?undefined:n>limit?"up":"down");
+function operationCurrent(op){return activeOperation===op&&!op.cancelled;}
+function ensureCurrent(op){if(!operationCurrent(op))throw new TaskError("CANCELLED","Operação cancelada ou substituída.");}
+function denyMutation(){if(modalState&&!activeOperation){msg("Feche o diálogo antes de alterar a seleção.",true);return true;}if(!activeOperation)return false;msg("Conclua ou cancele a operação atual antes de alterar a seleção ou configuração.",true);return true;}
+function syncOperationControls(){
+ const locked=!!activeOperation,stage=activeOperation?.stage;
+ for(const id of ["selectBtn","addBtn","clearBtn","fileInput","ipp","limit","spLimit","maxAtt","spBal","spClear","cardImg","cardPdf","back","hdrTitle","helpBtn","historyBtn","cardOpt","optBtn","optRun","optClear","optSave","optTarget"])$(id).disabled=locked;
+ $("pdfBtn").disabled=locked&&!(["loading-pdf","planning"].includes(stage));$("pdfInput").disabled=$("pdfBtn").disabled;
+ const importing=isImporting();$("operationBar").classList.toggle("hidden",!locked||importing);loadCard.classList.toggle("hidden",!importing);
+ if(mode==="img")zone.classList.toggle("hidden",items.length>0||importing);if(mode==="pdf")$("splitZone").classList.toggle("hidden",!!spDoc||importing);if(mode==="opt")$("optZone").classList.toggle("hidden",!!optDoc||importing);$("loadCancel").disabled=!importing;
+ if(stage==="duplicates")$("loadLine").textContent="Aguardando a sua decisão sobre as imagens repetidas…";
+ $("operationText").textContent=locked?(labels[stage]||stage)+(activeOperation.label?" · "+activeOperation.label:""):"Pronto";
+ $("operationCancel").disabled=!locked;
+ if(typeof splitPlan!=="undefined")$("spAll").disabled=locked||!splitPlan||!!splitPlan.overPages.length;
+ document.querySelectorAll("#spParts button").forEach(b=>b.disabled=locked||!splitPlan||!!splitPlan.overPages.length);
+ document.querySelectorAll("#grid button").forEach(b=>b.disabled=locked);
+ document.querySelectorAll("#grid .card").forEach(c=>c.draggable=!locked);
+ $("clearDownloads").disabled=locked;optRefresh();$("clearBtn").disabled=locked||!items.length; if(locked)genBtn.disabled=true;
+}
+function beginOperation(stage,label="",snapshot=null){if(activeOperation)throw new TaskError("BUSY","Já existe uma operação em andamento.");const op={id:++operationSequence,stage,label,snapshot,returnFocus:focusToken(),cancelled:false,cancelHandlers:new Set()};activeOperation=op;syncOperationControls();if(!modalState)opCancelButton().focus();return op;}
+function operationStage(op,stage){ensureCurrent(op);op.stage=stage;syncOperationControls();}
+function endOperation(op){if(activeOperation!==op)return;activeOperation=null;syncOperationControls();render();if(!modalState)restoreFocus(op.returnFocus);}
+function cancelOperation(reason="Operação cancelada. Nenhum novo download será solicitado."){
+ const op=activeOperation;if(!op)return;op.cancelled=true;for(const fn of [...op.cancelHandlers])fn();op.cancelHandlers.clear();if(overResolve)overResolve(false);if(op.stage==="generating"||op.stage==="confirming"){genCancel=true;busy=false;progClose();}
+ activeOperation=null;syncOperationControls();render();if(!modalState)restoreFocus(op.returnFocus);msg(reason+" Downloads já solicitados não são desfeitos.");op.reported=true;
+}
+function showOperationError(op,e){if(activeOperation&&activeOperation!==op||op?.reported)return;if(modalState?.id==="prog")progClose();const titles={CANCELLED:"Cancelado",TIMEOUT:"Prazo técnico excedido",RESOURCE_LIMIT:"Limite técnico excedido",UNSUPPORTED_PDF:"Recurso PDF não suportado",ENCRYPTED_PDF:"PDF protegido",INVALID_PDF:"Estrutura PDF inválida",INVALID_INPUT:"Entrada inválida",CAPABILITY:"Navegador incompatível",WORKER_UNAVAILABLE:"Worker indisponível",IMAGE_DECODE:"Imagem não lida",INTERNAL:"Falha interna"};msg(`[${e.code||"INTERNAL"}] ${titles[e.code]||"Falha"}: ${e.code?e.message:"Não foi possível concluir; nenhuma saída foi liberada."}`,true);}
+function workerJob(op,kind,data,onProgress=()=>{}){
+ ensureCurrent(op);return new Promise((resolve,reject)=>{let worker,url,timer,settled=false;
+ const finish=(err,result)=>{if(settled)return;settled=true;clearTimeout(timer);op.cancelHandlers.delete(abort);if(worker)worker.terminate();if(url)URL.revokeObjectURL(url);err?reject(err):resolve(result);};
+ const abort=()=>finish(new TaskError("CANCELLED","Processamento encerrado por cancelamento."));op.cancelHandlers.add(abort);
+ try{if(typeof Worker==="undefined")throw new TaskError("WORKER_UNAVAILABLE","Este navegador não oferece Web Worker. Nenhum parser será executado na interface.");url=URL.createObjectURL(new Blob([$("workerSource").textContent],{type:"text/javascript"}));worker=new Worker(url);timer=setTimeout(()=>finish(new TaskError("TIMEOUT",`Processamento excedeu ${POLICY.timeoutMs/1000} segundos; o worker foi encerrado.`)),POLICY.timeoutMs);
+ worker.onmessage=e=>{if(!operationCurrent(op)){abort();return;}const message=e.data;if(message.type==="progress")onProgress(message);else if(message.type==="result")finish(null,message.result);else if(message.type==="error")finish(new TaskError(message.code,message.message));};
+ worker.onerror=e=>{e.preventDefault();finish(new TaskError("WORKER_UNAVAILABLE","Falha ao iniciar ou executar o worker local. Use um navegador que permita worker blob em arquivo local."));};worker.onmessageerror=()=>finish(new TaskError("INTERNAL","Falha na transferência local do resultado."));worker.postMessage({kind,data});
+ }catch(e){finish(e.code?e:new TaskError("WORKER_UNAVAILABLE","O navegador bloqueou o processamento isolado. Nenhuma alternativa insegura foi executada."));}
+ });
+}
+function cancellablePause(op,ms){ensureCurrent(op);return new Promise((resolve,reject)=>{let timer;const cancel=()=>{clearTimeout(timer);op.cancelHandlers.delete(cancel);reject(new TaskError("CANCELLED","Operação interrompida antes do download."));};op.cancelHandlers.add(cancel);timer=setTimeout(()=>{op.cancelHandlers.delete(cancel);try{ensureCurrent(op);resolve();}catch(e){reject(e);}},ms);});}
+function safeSave(op,bytes,name){ensureCurrent(op);saveBytes(bytes,name);}
+function getImageLimit(){return parseSize(limitInput.value);}
+function currentImageSnapshot(){return Object.freeze({revision:imageRevision,limit:getImageLimit(),ipp,originalBytes:items.reduce((n,i)=>n+i.file.size,0),pages:layout(items.map(i=>Object.freeze({id:i.id,file:i.file,w:i.w,h:i.h}))),name:`PDFGerado__${new Date().toLocaleDateString("sv-SE")}.pdf`});}
+function checkImageSnapshot(op){ensureCurrent(op);const s=op.snapshot;if(imageRevision!==s.revision||ipp!==s.ipp||getImageLimit()!==s.limit)throw new TaskError("CANCELLED","A seleção/configuração divergiu do snapshot; download bloqueado.");}
 
-    /* ---------- gerador mínimo de PDF (JPEG/DCTDecode) ---------- */
-    function buildPdf(pages) {
-      const enc = new TextEncoder(), chunks = [], offsets = [];
-      let len = 0;
-      const push = (d) => {const b = typeof d === 'string' ? enc.encode(d) : d; chunks.push(b); len += b.length;};
-      const obj = (n, fn) => {offsets[n] = len; push(`${n} 0 obj\n`); fn(); push('\nendobj\n');};
-      let next = 3;
-      const imgIds = pages.map((p) => p.items.map(() => next++));
-      const pageIds = pages.map(() => ({page: next++, content: next++}));
-      push('%PDF-1.4\n'); push(new Uint8Array([0x25, 0xE2, 0xE3, 0xCF, 0xD3, 0x0A]));
-      obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
-      obj(2, () => push(`<< /Type /Pages /Count ${pages.length} /Kids [${pageIds.map((p) => p.page + ' 0 R').join(' ')}] >>`));
-      pages.forEach((pg, i) => pg.items.forEach((it, j) => obj(imgIds[i][j], () => {
-        push(`<< /Type /XObject /Subtype /Image /Width ${it.px} /Height ${it.py} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${it.jpeg.length} >>\nstream\n`);
-        push(it.jpeg); push('\nendstream');
-      })));
-      pages.forEach((pg, i) => {
-        const {page, content} = pageIds[i], f = (n) => n.toFixed(2);
-        const stream = pg.items.map((it, j) => `q ${f(it.w)} 0 0 ${f(it.h)} ${f(it.x)} ${f(it.y)} cm /Im${j} Do Q`).join('\n');
-        const xo = pg.items.map((_, j) => `/Im${j} ${imgIds[i][j]} 0 R`).join(' ');
-        obj(page, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${f(pg.width)} ${f(pg.height)}] /Resources << /XObject << ${xo} >> >> /Contents ${content} 0 R >>`));
-        obj(content, () => push(`<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}\nendstream`));
-      });
-      const xref = len;
-      push(`xref\n0 ${next}\n0000000000 65535 f \n`);
-      for (let n = 1; n < next; n++) push(String(offsets[n]).padStart(10, '0') + ' 00000 n \n');
-      push(`trailer\n<< /Size ${next} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
-      const out = new Uint8Array(len); let o = 0;
-      for (const c of chunks) {out.set(c, o); o += c.length;}
-      return out;
-    }
+/* ---------- utilidades ---------- */
+function el(tag, cls, text) {
+const e = document.createElement(tag);
+if (tag === 'img') e.draggable = false;
+if (cls) e.className = cls;
+if (text !== undefined) e.textContent = text;
+return e;
+}
+const limitBytes=()=>getImageLimit();
+function msg(text, isErr) { statusEl.textContent = text || ''; statusEl.classList.toggle('err', !!isErr); }
+const isImg=f=>/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name)||/^image\/(jpeg|png|gif|webp|bmp|avif)$/.test(f.type);
+const revoke = (u) => { if (u) URL.revokeObjectURL(u); };
+/* ---------- gerador mínimo de PDF (JPEG/DCTDecode) ---------- */
+/* Montagem isolada no worker. */
+/* ---------- paginação (preserva a ordem) e layout em mm ---------- */
+function paginate(list) {
+const pages = [], maxRows = ipp === 1 ? 1 : 2, isP = (im) => im.w <= im.h;
+let i = 0;
+while (i < list.length) {
+const rows = []; let count = 0;
+while (i < list.length && rows.length < maxRows && count < ipp) {
+if (ipp > 1 && count + 2 <= ipp && i + 1 < list.length && isP(list[i]) && isP(list[i + 1])) {
+rows.push([list[i], list[i + 1]]); i += 2; count += 2;
+} else { rows.push([list[i]]); i += 1; count += 1; }
+}
+pages.push(rows);
+}
+return pages;
+}
+function layout(list) {
+return paginate(list).map((rows) => {
+const n = rows.length, ch = (PH - 2 * MY - GY * (n - 1)) / n, cw = PW - 2 * MX, out = [];
+rows.forEach((row, r) => {
+const cellW = row.length === 2 ? (cw - GX) / 2 : cw, top = MY + r * (ch + GY);
+row.forEach((im, c) => {
+const nw = im.w * 25.4 / 96, nh = im.h * 25.4 / 96; // tamanho natural (96 dpi), nunca amplia
+const s = Math.min(cellW / nw, ch / nh, 1), w = nw * s, h = nh * s;
+out.push({ im, x: MX + c * (cellW + GX) + (cellW - w) / 2, y: top + (ch - h) / 2, w, h });
+});
+});
+return out;
+});
+}
+/* ---------- carregamento de imagens (fila de 3, miniaturas leves) ---------- */
+async function addFiles(fileList){
+ if(denyMutation())return;const files=Array.from(fileList||[]);if(!files.length)return;
+ let op;
+ try{if(files.some(f=>!isImg(f)))throw new TaskError("INVALID_INPUT","Selecione somente imagens JPG, PNG, WebP, GIF, BMP ou AVIF. Nenhum arquivo deste lote foi adicionado.");
+ if(items.length+files.length>POLICY.images)throw new TaskError("RESOURCE_LIMIT","Seleção limitada a 400 imagens.");
+ const sum=items.reduce((n,i)=>n+i.file.size,0)+files.reduce((n,f)=>n+f.size,0);inputGuard(sum);if(files.some(f=>f.size>POLICY.imageBytes))throw new TaskError("RESOURCE_LIMIT","Uma imagem excede o limite de 50 MB.");
+ op=beginOperation("loading-images",`${files.length} arquivo(s)`);loadOpen(files.length);const result=await workerJob(op,"prepare",{files,existingPixels:items.reduce((n,i)=>n+i.w*i.h,0),existing:items.map(it=>({hash:it.hash,file:it.file}))},m=>loadProgress(m));ensureCurrent(op);
+ const chosen=await decideDuplicates(op,result,files);ensureCurrent(op);operationStage(op,"loading-images");loadProgress({stage:"finish"});
+ const added=[];try{for(const i of chosen){const file=files[i],meta=result.images[i],entry={id:`${op.id}-${i}-${Date.now()}`,file,key:`${file.name}|${file.size}|${file.lastModified}`,hash:meta.hash,w:meta.w,h:meta.h,url:"",thumb:"",fresh:true};added.push(entry);entry.url=URL.createObjectURL(file);entry.thumb=URL.createObjectURL(meta.thumb);}}catch(e){for(const it of added){revoke(it.url);revoke(it.thumb);}throw e;}
+ if(added.length){items.push(...added);setTimeout(()=>added.forEach(a=>{a.fresh=false;}),0);changed();}msg(`${added.length} imagem(ns) adicionada(s); ${files.length-added.length} repetição(ões) ignorada(s) por sua escolha. Nenhuma diferença de conteúdo foi descartada por nome, tamanho ou data.`);
+ }catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}
+}
 
-    /* ---------- paginação (preserva a ordem) e layout em mm ---------- */
-    function paginate(list) {
-      const pages = [], maxRows = ipp === 1 ? 1 : 2, isP = (im) => im.w <= im.h;
-      let i = 0;
-      while (i < list.length) {
-        const rows = []; let count = 0;
-        while (i < list.length && rows.length < maxRows && count < ipp) {
-          if (ipp > 1 && count + 2 <= ipp && i + 1 < list.length && isP(list[i]) && isP(list[i + 1])) {
-            rows.push([list[i], list[i + 1]]); i += 2; count += 2;
-          } else {rows.push([list[i]]); i += 1; count += 1;}
-        }
-        pages.push(rows);
-      }
-      return pages;
-    }
-    function layout(list) {
-      return paginate(list).map((rows) => {
-        const n = rows.length, ch = (PH - 2 * MY - GY * (n - 1)) / n, cw = PW - 2 * MX, out = [];
-        rows.forEach((row, r) => {
-          const cellW = row.length === 2 ? (cw - GX) / 2 : cw, top = MY + r * (ch + GY);
-          row.forEach((im, c) => {
-            const nw = im.w * 25.4 / 96, nh = im.h * 25.4 / 96;           // tamanho natural (96 dpi), nunca amplia
-            const s = Math.min(cellW / nw, ch / nh, 1), w = nw * s, h = nh * s;
-            out.push({im, x: MX + c * (cellW + GX) + (cellW - w) / 2, y: top + (ch - h) / 2, w, h});
-          });
-        });
-        return out;
-      });
-    }
+/* Stable actions declared with cards. */
+function clearAll() {
+if(denyMutation())return;
+if (!items.length || !window.confirm('Deseja remover todas as imagens selecionadas?')) return;
+items.forEach((i) => { revoke(i.url); revoke(i.thumb); });
+items.length=0;changed();$("selectBtn").focus();msg("Seleção de imagens limpa. Arquivos originais não foram excluídos.");
+}
+/* ---------- interface ---------- */
+function btn(label, aria, fn, cls) {
+const b = el('button', cls || 'ico', label);
+b.type = 'button'; b.setAttribute('aria-label', aria);
+b.onclick = (e) => { e.stopPropagation(); fn(); };
+return b;
+}
+function card(it,i){const c=el("article","card");c.draggable=!activeOperation;c.dataset.id=it.id;if(it.fresh){c.classList.add("enter");c.style.animationDelay=(it.delay||0)+"ms";}c.setAttribute("aria-label",`Imagem ${i+1} de ${items.length}: ${it.file.name}`);
+ c.onmouseenter=()=>hl(it.id,true);c.onmouseleave=()=>hl(it.id,false);
+ c.ondragover=e=>{if(dragFrom!==null){e.preventDefault();c.classList.add("over");}};c.ondragleave=()=>c.classList.remove("over");
+ c.ondragstart=e=>{if(activeOperation){e.preventDefault();return;}dragFrom=i;e.dataTransfer.setData("text/plain",String(i));e.dataTransfer.effectAllowed="move";c.classList.add("drag");};
+ c.ondragend=()=>{dragFrom=null;c.classList.remove("drag");document.body.classList.remove("dragging");};
+ c.ondrop=e=>{if(dragFrom===null)return;e.preventDefault();e.stopPropagation();const from=dragFrom;dragFrom=null;move(from,i,"open");};
+ const img=el("img","thumb");img.alt="";img.decoding="async";if(it.thumb)img.src=it.thumb;
+ const open=btn("",`Ampliar imagem ${i+1}: ${it.file.name}`,()=>openLb(items.indexOf(it)),"previewButton");open.dataset.focusKey=it.id+":open";open.append(img);c.append(el("span","badge",String(i+1)),open);
+ const meta=el("div","meta"),name=el("span","name",it.file.name);name.title=it.file.name;
+ const up=btn("↑",`Mover ${it.file.name} para cima`,()=>move(items.indexOf(it),items.indexOf(it)-1,"up"));up.dataset.focusKey=it.id+":up";up.setAttribute("aria-disabled",String(i===0));
+ const down=btn("↓",`Mover ${it.file.name} para baixo`,()=>move(items.indexOf(it),items.indexOf(it)+1,"down"));down.dataset.focusKey=it.id+":down";down.setAttribute("aria-disabled",String(i===items.length-1));
+ const remove=btn("×",`Remover ${it.file.name}`,()=>drop(it),"rm");remove.dataset.focusKey=it.id+":remove";
+ meta.append(name,up,down,remove);c.append(meta);return c;
+}
+function move(from,to,action="open"){if(denyMutation())return;if(from<0||from>=items.length)return;const it=items[from];if(to<0||to>=items.length||to===from){msg(`Imagem ${from+1} de ${items.length}: já está no limite desta direção.`);focusImageAction(it.id,action);return;}
+ items.splice(to,0,items.splice(from,1)[0]);changed();focusImageAction(it.id,action);msg(`${it.file.name}: movida para a posição ${to+1} de ${items.length}.`);
+}
+function drop(it,text){if(denyMutation())return;const i=items.indexOf(it);if(i<0)return;items.splice(i,1);revoke(it.url);revoke(it.thumb);changed();if(items.length)focusImageAction(items[Math.min(i,items.length-1)].id,"open");else $("selectBtn").focus();msg(text||`${it.file.name}: imagem removida. ${items.length} imagem(ns) na seleção.`,!!text);}
 
-    /* ---------- carregamento de imagens (fila de 3, miniaturas leves) ---------- */
-    async function prepare(it) {
-      const bmp = await createImageBitmap(it.file, {imageOrientation: 'from-image'});
-      const w = bmp.width, h = bmp.height, s = Math.min(1, 320 / w);
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
-      const g = c.getContext('2d');
-      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-      g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, c.width, c.height);
-      bmp.close();
-      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
-      if (!blob) throw new Error('thumb');
-      const url = URL.createObjectURL(blob);
-      if (!items.includes(it)) {revoke(url); return;}              // removida enquanto carregava
-      it.thumb = url; it.w = w; it.h = h;
-    }
-    async function loadQueue(list) {
-      let n = 0;
-      const worker = async () => {
-        while (n < list.length) {
-          const it = list[n++];
-          try {await prepare(it);}
-          catch (e) {if (items.includes(it)) drop(it, `Não foi possível ler "${it.file.name}"; a imagem foi removida.`);}
-          schedule();
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
-    }
-    function addFiles(fileList) {
-      const added = []; let skipped = 0, dups = 0;
-      for (const f of Array.from(fileList || [])) {
-        if (!isImg(f)) {skipped++; continue;}
-        const key = `${f.name}|${f.size}|${f.lastModified}`;
-        if (items.some((i) => i.key === key)) {dups++; continue;}
-        const it = {id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, file: f, key, w: 0, h: 0, url: URL.createObjectURL(f), thumb: ''};
-        items.push(it); added.push(it);
-      }
-      msg([skipped && `${skipped} arquivo(s) ignorado(s): formato não compatível.`, dups && `${dups} duplicado(s) ignorado(s).`].filter(Boolean).join(' '), skipped > 0);
-      changed();
-      if (added.length) loadQueue(added);
-    }
-    function drop(it, text) {
-      const i = items.indexOf(it);
-      if (i === -1) return;
-      items.splice(i, 1); revoke(it.url); revoke(it.thumb);
-      if (text) msg(text, true);
-      changed();
-    }
-    function move(from, to) {
-      if (from === to || !(from >= 0 && from < items.length && to >= 0 && to < items.length)) return;
-      items.splice(to, 0, items.splice(from, 1)[0]);
-      changed();
-    }
-    function clearAll() {
-      if (!items.length || !window.confirm('Deseja remover todas as imagens selecionadas?')) return;
-      items.forEach((i) => {revoke(i.url); revoke(i.thumb);});
-      items.length = 0; msg(''); changed();
-    }
+function renderPages(ready) {
+pagesBox.replaceChildren(...layout(ready).map((pg, k) => {
+const d = el('div', 'mp');
+pg.forEach((o) => {
+const im = el('img'); im.alt = ''; im.dataset.id = o.im.id;
+im.onmouseenter = () => hl(o.im.id, true); im.onmouseleave = () => hl(o.im.id, false);
+if (o.im.thumb) im.src = o.im.thumb;
+Object.assign(im.style, { left: (o.x / PW * 100) + '%', top: (o.y / PH * 100) + '%', width: (o.w / PW * 100) + '%', height: (o.h / PH * 100) + '%' });
+d.append(im);
+});
+const fig = el('figure', 'mpw'); fig.append(d, el('span', '', `Página ${k + 1}`));
+return fig;
+}));
+}
+function render(){const gridFocus=captureGridFocus();let validLimit=null,limitError="";try{validLimit=getImageLimit();}catch(e){limitError=e.message;} $("imageError").textContent=limitError;limitInput.setAttribute("aria-invalid",String(!!limitError));
+const has = items.length > 0, ready = items.filter((i) => i.w && i.h), loading = items.length - ready.length;
+panel.classList.toggle('hidden', !has || mode !== 'img');
+countEl.textContent = `${items.length} ${items.length === 1 ? 'imagem selecionada' : 'imagens selecionadas'}` + (loading ? ` (${loading} carregando…)` : '');
+sizeEl.textContent = `originais: ${fmtMB(items.reduce((s,i)=>s+i.file.size,0))}` + (lastPdfSize ? ` • PDF gerado: ${fmtFit(lastPdfSize,validLimit)}` : '');
+sizeEl.classList.toggle('warn', validLimit!==null && lastPdfSize > validLimit);
+genBtn.disabled=!ready.length||loading>0||busy||!!activeOperation||validLimit===null;
+clearBtn.disabled = !has;
+zone.classList.toggle('hidden', has || mode !== 'img' || isImporting());
+const lim=validLimit,ratio=lim&&lastPdfSize?lastPdfSize/lim:0;
+meterFill.style.width = Math.min(100, ratio * 100) + '%';
+meter.dataset.s = !lastPdfSize ? '' : ratio > 1 ? 'over' : ratio > 0.9 ? 'near' : 'ok';
+meterText.textContent=lim===null?"Corrija o limite para habilitar a geração.":lastPdfSize? `PDF: ${fmtFit(lastPdfSize,lim)}; limite ${fmtMB(lim)}; ${lastPdfSize>lim?"acima do limite":"dentro do limite"}.` : `Limite: ${fmtMB(lim)}. O tamanho do PDF aparece após gerar.`;
+const starts = new Map();
+paginate(ready).forEach((rows, k) => starts.set(rows[0][0].id, k + 1));
+const nodes = [];let freshN=0;
+items.forEach((it, i) => { if(it.fresh)it.delay=Math.min(freshN++,14)*30; if (starts.has(it.id)) nodes.push(el('div', 'pg', `Página ${starts.get(it.id)}`)); nodes.push(card(it, i)); });
+grid.replaceChildren(...nodes);
+renderPages(ready);syncOperationControls();if(gridFocus&&!activeOperation&&!modalState)restoreFocus(gridFocus);
+}
+function changed(){imageRevision++;lastPdfSize=0;render();}
+function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(changed); }
+/* ---------- geração do PDF ---------- */
+async function generate(){
+ if(denyMutation())return;if(!items.length||items.some(i=>!i.w||!i.h)){msg("Aguarde a leitura das imagens antes de gerar.",true);return;}
+ let op;try{const snapshot=currentImageSnapshot();op=beginOperation("generating",`${items.length} imagem(ns)`,snapshot);busy=true;render();const tries=[[200,0.88],[200,0.8],[160,0.8],[160,0.72],[130,0.72],[110,0.65]];progOpen(tries,snapshot.limit);msg("");
+ const {pdf}=await workerJob(op,"generate",{pages:snapshot.pages,limit:snapshot.limit},m=>{if(m.stage==="try")progTry(m.k,m.state,m.text);else {progBar(m.done||0,m.total||1,m.text);$("operationText").textContent=m.text;}});
+ checkImageSnapshot(op);progBar(1,1,"Arquivo montado; conferindo antes do download…");await cancellablePause(op,500);checkImageSnapshot(op);progClose();lastPdfSize=pdf.length;
+ if(pdf.length>snapshot.limit){operationStage(op,"confirming");render();const ok=await askOversize(pdf.length,snapshot.originalBytes,snapshot.limit);checkImageSnapshot(op);if(!ok){msg("Nenhum download solicitado: excesso não autorizado.");return;}}
+ checkImageSnapshot(op);operationStage(op,"downloading");safeSave(op,pdf,snapshot.name);msg(`Download solicitado: ${fmtFit(pdf.length,snapshot.limit)}; limite ${fmtMB(snapshot.limit)}${pdf.length>snapshot.limit?"; excesso autorizado":""}. Confira no navegador; a gravação não foi confirmada pelo aplicativo.`);
+ }catch(e){showOperationError(op,e);}finally{if(op&&activeOperation===op){progClose();busy=false;endOperation(op);if(!genBtn.disabled)genBtn.focus();}}
+}
 
-    /* ---------- interface ---------- */
-    function btn(label, aria, fn, cls) {
-      const b = el('button', cls || 'ico', label);
-      b.type = 'button'; b.setAttribute('aria-label', aria);
-      b.onclick = (e) => {e.stopPropagation(); fn();};
-      return b;
-    }
-    function card(it, i) {
-      const c = el('article', 'card');
-      c.draggable = true; c.dataset.id = it.id;
-      c.onmouseenter = () => hl(it.id, true); c.onmouseleave = () => hl(it.id, false);
-      c.ondragover = () => {if (dragFrom !== null) c.classList.add('over');};
-      c.ondragleave = () => c.classList.remove('over');
-      c.ondragstart = (e) => {dragFrom = i; e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; c.classList.add('drag');};
-      c.ondragend = () => {dragFrom = null; c.classList.remove('drag'); document.body.classList.remove('dragging');};
-      c.ondrop = (e) => {
-        if (dragFrom === null) return;                                   // arquivo externo: tratado na janela
-        e.preventDefault(); e.stopPropagation();
-        const from = dragFrom; dragFrom = null;
-        move(from, i);
-      };
-      c.onclick = (e) => {if (!e.target.closest('button')) openLb(i);};
-      const img = el('img', 'thumb'); img.alt = `Imagem ${i + 1}`; img.decoding = 'async';
-      if (it.thumb) img.src = it.thumb;
-      const name = it.file.name.length > 22 ? it.file.name.slice(0, 19) + '...' : it.file.name;
-      const meta = el('div', 'meta');
-      meta.append(el('span', 'name', name), btn('↑', 'Mover para cima', () => move(i, i - 1)), btn('↓', 'Mover para baixo', () => move(i, i + 1)), btn('×', `Remover ${it.file.name}`, () => drop(it), 'rm'));
-      c.append(el('span', 'badge', String(i + 1)), img, meta);
-      return c;
-    }
-    function renderPages(ready) {
-      pagesBox.replaceChildren(...layout(ready).map((pg, k) => {
-        const d = el('div', 'mp');
-        pg.forEach((o) => {
-          const im = el('img'); im.alt = ''; im.dataset.id = o.im.id;
-          im.onmouseenter = () => hl(o.im.id, true); im.onmouseleave = () => hl(o.im.id, false);
-          if (o.im.thumb) im.src = o.im.thumb;
-          Object.assign(im.style, {left: (o.x / PW * 100) + '%', top: (o.y / PH * 100) + '%', width: (o.w / PW * 100) + '%', height: (o.h / PH * 100) + '%'});
-          d.append(im);
-        });
-        const fig = el('figure', 'mpw'); fig.append(d, el('span', '', `Página ${k + 1}`));
-        return fig;
-      }));
-    }
-    function render() {
-      const has = items.length > 0, ready = items.filter((i) => i.w && i.h), loading = items.length - ready.length;
-      panel.classList.toggle('hidden', !has);
-      countEl.textContent = `${items.length} ${items.length === 1 ? 'imagem selecionada' : 'imagens selecionadas'}` + (loading ? ` (${loading} carregando…)` : '');
-      sizeEl.textContent = `originais: ${fmt(items.reduce((s, i) => s + i.file.size, 0))}` + (lastPdfSize ? ` • PDF gerado: ${fmt(lastPdfSize)}` : '');
-      sizeEl.classList.toggle('warn', lastPdfSize > limitBytes());
-      genBtn.disabled = !ready.length || loading > 0 || busy;
-      clearBtn.disabled = !has;
-      zone.classList.toggle('hidden', has);
-      const lim = limitBytes(), ratio = lastPdfSize ? lastPdfSize / lim : 0;
-      meterFill.style.width = Math.min(100, ratio * 100) + '%';
-      meter.dataset.s = !lastPdfSize ? '' : ratio > 1 ? 'over' : ratio > 0.9 ? 'near' : 'ok';
-      meterText.textContent = lastPdfSize ? `PDF: ${fmt(lastPdfSize)} de ${fmt(lim)}` : `Limite: ${fmt(lim)}. O tamanho exato aparece ao gerar.`;
-      const starts = new Map();
-      paginate(ready).forEach((rows, k) => starts.set(rows[0][0].id, k + 1));
-      const nodes = [];
-      items.forEach((it, i) => {if (starts.has(it.id)) nodes.push(el('div', 'pg', `Página ${starts.get(it.id)}`)); nodes.push(card(it, i));});
-      grid.replaceChildren(...nodes);
-      renderPages(ready);
-    }
-    function changed() {lastPdfSize = 0; render();}
-    function schedule() {cancelAnimationFrame(raf); raf = requestAnimationFrame(changed);}
+/* ---------- lightbox ---------- */
+/* Lightbox managed by shared controller. */
+/* ---------- eventos ---------- */
+fileInput.addEventListener('change', (e) => { addFiles(e.target.files); fileInput.value = ''; });
+$("selectBtn").onclick=$("addBtn").onclick=()=>{if(!denyMutation())fileInput.click();};
+clearBtn.onclick = clearAll;
+genBtn.onclick = generate;
+$("ipp").onchange=e=>{if(denyMutation()){e.target.value=String(ipp);return;}const v=Number(e.target.value);if(![1,2,4].includes(v)){e.target.value=String(ipp);msg("Layout inválido.",true);return;}ipp=v;changed();};
+limitInput.oninput=limitInput.onchange=()=>{if(denyMutation())return;changed();};
+$('lbClose').onclick = closeLb; $('lbPrev').onclick = () => stepLb(-1); $('lbNext').onclick = () => stepLb(1);
+lb.onclick = (e) => { if (e.target === lb) closeLb(); };
 
-    /* ---------- geração do PDF ---------- */
-    async function jpegFor(o, dpi, q) {
-      const im = o.im;
-      const px = Math.max(1, Math.min(im.w, Math.round(o.w / 25.4 * dpi))), py = Math.max(1, Math.round(px * im.h / im.w));
-      const bmp = await createImageBitmap(im.file, {resizeWidth: px, resizeHeight: py, resizeQuality: 'high', imageOrientation: 'from-image'});
-      const c = document.createElement('canvas'); c.width = px; c.height = py;
-      const g = c.getContext('2d');
-      g.fillStyle = '#fff'; g.fillRect(0, 0, px, py); g.drawImage(bmp, 0, 0, px, py);
-      bmp.close();
-      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', q));
-      if (!blob) throw new Error('falha ao codificar a imagem');
-      return {jpeg: new Uint8Array(await blob.arrayBuffer()), px, py};
-    }
-    async function generate() {
-      if (busy || !items.length) return;
-      busy = true; render();
-      const limit = limitBytes(), pages = layout(items);
-      const tries = [[200, 0.88], [200, 0.8], [160, 0.8], [160, 0.72], [130, 0.72], [110, 0.65]];
-      const nImg = pages.reduce((n, pg) => n + pg.length, 0);
-      let pdf = null;
-      msg(''); progOpen(tries, limit);
-      try {
-        for (let k = 0; k < tries.length; k++) {
-          const [dpi, q] = tries[k], head = `Tentativa ${k + 1} de ${tries.length}`;
-          progTry(k, 'run', 'processando…'); progBar(0, nImg, `${head}: imagem 0 de ${nImg}`);
-          const out = []; let done = 0;
-          for (const pg of pages) {
-            const its = [];
-            for (const o of pg) {
-              if (genCancel) throw new Error('__cancel__');
-              const j = await jpegFor(o, dpi, q);
-              its.push({...j, x: o.x * MM, y: (PH - o.y - o.h) * MM, w: o.w * MM, h: o.h * MM});
-              progBar(++done, nImg, `${head}: imagem ${done} de ${nImg}`);
-            }
-            out.push({width: PW * MM, height: PH * MM, items: its});
-          }
-          progBar(nImg, nImg, `${head}: montando o PDF…`);
-          await new Promise((r) => setTimeout(r, 30));                  // dá tempo da tela atualizar antes do trabalho síncrono
-          pdf = buildPdf(out);
-          const fits = pdf.length <= limit;
-          progTry(k, fits ? 'ok' : 'over', `${fmt(pdf.length)} · ${fits ? 'dentro do limite' : 'acima do limite'}`);
-          if (fits) {for (let r = k + 1; r < tries.length; r++) progTry(r, 'skip', 'não necessária'); break;}
-        }
-        progBar(nImg, nImg, 'Concluído.');
-        await new Promise((r) => setTimeout(r, 500));                   // o usuário vê o resultado final antes de a janela fechar
-        progClose();
-        lastPdfSize = pdf.length;
-        const over = pdf.length > limit;
-        if (over) {
-          msg(''); render();
-          const ok = await askOversize(pdf.length, items.reduce((n, i) => n + i.file.size, 0), limit);
-          if (!ok) {msg(`PDF não salvo: ${fmt(pdf.length)}, acima do limite de ${fmt(limit)}. Remova imagens ou aumente o limite.`, true); return;}
-        }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([pdf], {type: 'application/pdf'}));
-        a.download = `Documento_${new Date().toLocaleDateString('sv-SE')}.pdf`;
-        document.body.append(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-        if (!over) msg(`PDF gerado com ${fmt(pdf.length)} (limite: ${fmt(limit)}).`);
-        else msg(`PDF salvo com ${fmt(pdf.length)}, acima do limite de ${fmt(limit)}, por sua confirmação.`, true);
-      } catch (e) {
-        if (e && e.message === '__cancel__') msg('Geração cancelada. Nada foi baixado.');
-        else msg('Não foi possível gerar o PDF: ' + (e && e.message ? e.message : e), true);
-      } finally {progClose(); busy = false; render(); if (!genBtn.disabled) genBtn.focus();}
-    }
+// Soltar arquivos em qualquer lugar adiciona as imagens; nunca deixa o navegador abrir o arquivo e perder a sessão.
+window.addEventListener('dragover', (e) => { e.preventDefault(); if (dragFrom === null && e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) document.body.classList.add('dragging'); });
+window.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+window.addEventListener('drop', (e) => {
+e.preventDefault(); document.body.classList.remove('dragging');
+if (dragFrom !== null) { dragFrom = null; return; } // soltura de uma imagem já anexada fora de um card: apenas cancela, nunca adiciona
+routeFiles(e.dataTransfer && e.dataTransfer.files);
+});
+// Sem persistência: encerrar libera referências, não apaga originais nem certifica limpeza forense.
+window.addEventListener('pagehide', () => {if(activeOperation)cancelOperation(); items.forEach((i) => { revoke(i.url); revoke(i.thumb); }); items.length=0;downloadRequests=[];downloadSequence=0;});
+/* ---------- janela de ajuda ---------- */
+const HELP_AUTO_OPEN = true; // false: abre só pelo botão "Como usar"
+const help = $('help');
+let helpPrev = null;
+$('helpName').textContent = `PDFGerado__${new Date().toLocaleDateString('sv-SE')}.pdf`;
+/* Help managed by shared controller. */
+$('helpBtn').onclick = openHelp;
+$('helpClose').onclick = $('helpOk').onclick = closeHelp;
+help.onclick = (e) => { if (e.target === help) closeHelp(); };
 
-    /* ---------- lightbox ---------- */
-    function openLb(i) {
-      if (!(i >= 0 && i < items.length)) return;
-      lbIndex = i; lbImg.src = items[i].url; lb.classList.remove('hidden'); document.body.classList.add('modal');
-    }
-    function closeLb() {lbIndex = -1; lbImg.removeAttribute('src'); lb.classList.add('hidden'); document.body.classList.remove('modal');}
-    function stepLb(d) {const n = lbIndex + d; if (lbIndex >= 0 && n >= 0 && n < items.length) {lbIndex = n; lbImg.src = items[n].url;} }
+/* ---------- confirmação quando o PDF excede o limite ---------- */
+const overDlg = $('over');
+let overResolve = null;
+function askOversize(pdfSize,origSize,limit){return new Promise(resolve=>{
+ $("osOrig").textContent=fmtMB(origSize);$("osPdf").textContent=fmtFit(pdfSize,limit);$("osLimit").textContent=fmtMB(limit);$("osOver").textContent=`${fmtMB(pdfSize-limit,"up")} (${excessPercent(pdfSize,limit)} acima do limite)`;
+ overResolve=value=>{overResolve=null;closeManagedDialog("over",false);resolve(value);};$("osYes").onclick=()=>{if(overResolve)overResolve(true)};$("osNo").onclick=()=>{if(overResolve)overResolve(false)};
+ openManagedDialog("over","osNo",()=>{if(overResolve)overResolve(false)},activeOperation?.returnFocus);
+ });}
 
-    /* ---------- eventos ---------- */
-    fileInput.addEventListener('change', (e) => {addFiles(e.target.files); fileInput.value = '';});
-    $('selectBtn').onclick = $('addBtn').onclick = () => fileInput.click();
-    clearBtn.onclick = clearAll;
-    genBtn.onclick = generate;
-    $('ipp').onchange = (e) => {ipp = Number(e.target.value) || 2; changed();};
-    limitInput.onchange = () => render();
-    $('lbClose').onclick = closeLb; $('lbPrev').onclick = () => stepLb(-1); $('lbNext').onclick = () => stepLb(1);
-    lb.onclick = (e) => {if (e.target === lb) closeLb();};
-    document.addEventListener('keydown', (e) => {
-      if (lb.classList.contains('hidden')) return;
-      if (e.key === 'Escape') closeLb(); else if (e.key === 'ArrowLeft') stepLb(-1); else if (e.key === 'ArrowRight') stepLb(1);
-    });
-    // Soltar arquivos em qualquer lugar adiciona as imagens; nunca deixa o navegador abrir o arquivo e perder a sessão.
-    window.addEventListener('dragover', (e) => {e.preventDefault(); if (dragFrom === null && e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) document.body.classList.add('dragging');});
-    window.addEventListener('dragleave', (e) => {if (!e.relatedTarget) document.body.classList.remove('dragging');});
-    window.addEventListener('drop', (e) => {
-      e.preventDefault(); document.body.classList.remove('dragging');
-      if (dragFrom !== null) {dragFrom = null; return;}   // soltura de uma imagem já anexada fora de um card: apenas cancela, nunca adiciona
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
-    });
-    // Nada é persistido: ao fechar a página, libera tudo da memória.
-    window.addEventListener('pagehide', () => {items.forEach((i) => {revoke(i.url); revoke(i.thumb);}); items.length = 0;});
+/* ---------- janela de progresso da geração ---------- */
+const prog = $('prog'), pgBar = $('pgBar'), pgFill = $('pgFill'), pgLine = $('pgLine'),
+pgTries = $('pgTries'), pgTime = $('pgTime'), pgCancel = $('pgCancel');
+let genCancel = false, pgTimer = 0, pgPrev = null;
+function progOpen(tries, limit) {
+genCancel = false; pgCancel.disabled = false;
+$("pgLimit").textContent=fmtMB(limit);
+pgTries.replaceChildren(...tries.map(([dpi, q]) => {
+const li = el('li', 'wait');
+li.append(el('span', 'mk'), el('span', '', `${dpi} DPI · qualidade ${Math.round(q * 100)}%`), el('span', 'st', 'aguardando'));
+return li;
+}));
+progBar(0, 1, 'Preparando…');
+const t0 = Date.now(); pgTime.textContent = '0 s';
+pgTimer = setInterval(() => { pgTime.textContent = Math.floor((Date.now() - t0) / 1000) + ' s'; }, 250);
+pgPrev = document.activeElement;
+openManagedDialog("prog","pgCancel",()=>cancelOperation("Geração cancelada."),activeOperation?.returnFocus);
+}
+function progClose(){clearInterval(pgTimer);closeManagedDialog("prog",false);}
+function progBar(done, total, text) {
+const pct = total ? Math.round(done / total * 100) : 0;
+pgFill.style.width = pct + '%'; pgBar.setAttribute('aria-valuenow', String(pct)); pgLine.textContent = text;
+}
+function progTry(k, state, status) {
+const li = pgTries.children[k];
+if (li) { li.className = state; li.lastChild.textContent = status; }
+}
+pgCancel.onclick=()=>cancelOperation("Geração cancelada. Nenhum novo download foi solicitado.");
 
-    /* ---------- janela de ajuda ---------- */
-    const HELP_AUTO_OPEN = true;   // false: abre só pelo botão "Como usar"
-    const help = $('help');
-    let helpPrev = null;
-    $('helpName').textContent = `Documento_${new Date().toLocaleDateString('sv-SE')}.pdf`;
-    function openHelp() {
-      helpPrev = document.activeElement;
-      help.classList.remove('hidden'); document.body.classList.add('modal'); $('helpOk').focus();
-    }
-    function closeHelp() {
-      help.classList.add('hidden');
-      if (lb.classList.contains('hidden')) document.body.classList.remove('modal');
-      if (helpPrev && helpPrev.focus) helpPrev.focus();
-    }
-    $('helpBtn').onclick = openHelp;
-    $('helpClose').onclick = $('helpOk').onclick = closeHelp;
-    help.onclick = (e) => {if (e.target === help) closeHelp();};
-    document.addEventListener('keydown', (e) => {
-      if (help.classList.contains('hidden')) return;
-      if (e.key === 'Escape') closeHelp();
-      else if (e.key === 'Tab') {                                   // mantém o foco dentro da janela
-        const f = Array.from(help.querySelectorAll('button')), i = f.indexOf(document.activeElement);
-        e.preventDefault();
-        f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)].focus();
-      }
-    });
+/* ---------- divisão de PDF sem recompressão ---------- */
+/* Leitor PDF isolado no worker. */
+/* Registro efêmero de solicitações; não comprova gravação nem substitui auditoria. */
+let downloadRequests=[],downloadSequence=0;
+function excessPercent(bytes,limit){const pct=(bytes-limit)/limit*100;if(pct>0&&pct<0.01)return "menos de 0,01%";return pct.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";}
+/* DECISÃO TÉCNICA: histórico desativado por não haver persistência ao reiniciar a sessão. Código mantido como base para persistência futura. */
+const HISTORY_ENABLED=false;
+let historyFilter="all",modeBeforeHistory="home";
+const historyTime=d=>d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+function renderDownloadRequests(){
+ const badge=$("historyCount");badge.textContent=String(downloadSequence);badge.classList.toggle("hidden",!downloadSequence);
+ $("historyBtn").setAttribute("aria-label",downloadSequence?`Histórico de downloads, ${downloadSequence} ${downloadSequence===1?"solicitação":"solicitações"} nesta sessão`:"Histórico de downloads");
+ const rows=downloadRequests.filter(r=>historyFilter==="all"||r.kind===historyFilter).slice().reverse();
+ const total=downloadRequests.reduce((n,r)=>n+r.bytes,0),last=downloadRequests[downloadRequests.length-1];
+ $("histTotal").textContent=String(downloadSequence);$("histSize").textContent=downloadRequests.length?fmtMB(total):"–";$("histLast").textContent=last?historyTime(last.at):"–";
+ $("downloadCount").textContent=downloadSequence>downloadRequests.length?`A lista mostra as últimas ${downloadRequests.length} de ${downloadSequence} solicitações; as mais antigas saem após 50.`:"";
+ $("downloadList").replaceChildren(...rows.map(r=>{const tr=el("tr"),st=el("td"),pill=el("span","pill","Solicitado");st.append(pill);tr.append(el("td","num",String(r.seq)),el("td","hname",r.name),el("td","",r.kind),el("td","num",fmtMB(r.bytes)),el("td","",historyTime(r.at)),st);return tr;}));
+ $("histWrap").classList.toggle("hidden",!rows.length);const empty=$("histEmpty");empty.classList.toggle("hidden",!!rows.length);
+ empty.textContent=downloadRequests.length?"Nenhuma solicitação para este filtro.":"Nenhum download solicitado nesta sessão. Quando você gerar ou baixar um PDF, ele aparecerá aqui.";
+ $("clearDownloads").disabled=!!activeOperation||!downloadRequests.length;
+}
+function recordDownloadRequest(name,bytes){downloadSequence++;downloadRequests.push({seq:downloadSequence,name,bytes,kind:({pdf:"Dividir PDF",opt:"Otimizar PDF"})[mode]||"Criar PDF",at:new Date()});if(downloadRequests.length>50)downloadRequests.shift();renderDownloadRequests();}
+function clearDownloadRequests(){if(denyMutation())return;if(!downloadRequests.length)return;if(!window.confirm("Limpar o histórico desta sessão? Os arquivos já baixados não serão excluídos."))return;downloadRequests=[];downloadSequence=0;renderDownloadRequests();msg("Histórico limpo. Nenhum arquivo salvo no computador foi excluído.");restoreFocus({id:"historyBtn"});}
+function saveBytes(bytes,name){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));try{a.href=url;a.download=name;document.body.append(a);a.click();recordDownloadRequest(name,bytes.length);}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}}
 
-    /* ---------- confirmação quando o PDF excede o limite ---------- */
-    const overDlg = $('over');
-    let overResolve = null;
-    function askOversize(pdfSize, origSize, limit) {
-      return new Promise((resolve) => {
-        $('osOrig').textContent = fmt(origSize);
-        $('osPdf').textContent = fmt(pdfSize);
-        $('osLimit').textContent = fmt(limit);
-        $('osOver').textContent = `${fmt(pdfSize - limit)} (+${Math.max(1, Math.round((pdfSize / limit - 1) * 100))}%)`;
-        const prev = document.activeElement;
-        overResolve = (v) => {
-          overResolve = null; overDlg.classList.add('hidden'); document.body.classList.remove('modal');
-          if (prev && prev.focus) prev.focus();
-          resolve(v);
-        };
-        $('osYes').onclick = () => overResolve(true);
-        $('osNo').onclick = () => overResolve(false);
-        overDlg.classList.remove('hidden'); document.body.classList.add('modal');
-        $('osNo').focus();                                            // foco no botão seguro
-      });
-    }
-    document.addEventListener('keydown', (e) => {
-      if (!overResolve) return;
-      if (e.key === 'Escape') overResolve(false);
-      else if (e.key === 'Tab') {
-        const f = Array.from(overDlg.querySelectorAll('button')), i = f.indexOf(document.activeElement);
-        e.preventDefault();
-        f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)].focus();
-      }
-    });
+/* ---------- modo "Dividir um PDF grande": interface ---------- */
+let mode = 'home', spDoc = null, spParts = [], optDoc = null, optScanRes = null, optOut = null, optRes = null;
+const SCREENS = {
+home: ['Ferramentas', 'Encontre aqui as ferramentas necessárias para geração, divisão ou otimização de PDFs.'],
+opt: ['Otimizar PDF', 'Reduza o tamanho de um PDF existente preservando a leitura dos prints. O original nunca é alterado.'],
+img: ['Criar novo PDF', 'Organize os prints na ordem correta e gere um PDF dentro do limite de tamanho definido.'],
+history: ['Histórico de downloads', 'Veja os downloads solicitados ao navegador nesta sessão.'],
+pdf: ['Dividir PDF existente', 'Preserve o original quando ele já couber. Divida somente documentos com recursos suportados, com tamanho real conferido e sem recompressão das imagens.']
+};
+function setMode(m,internal=false){if(!internal&&denyMutation())return;
+mode = m;
+$('brand').textContent = BRAND + ' – ' + SCREENS[m][0]; $("brand").classList.toggle("sr-only",m==="home"); $('lead').textContent = SCREENS[m][1];
+$('home').classList.toggle('hidden', m !== 'home'); $('back').classList.toggle('hidden', m === 'home');
+$('splitZone').classList.toggle('hidden', m !== 'pdf' || !!spDoc || isImporting());
+$('splitPanel').classList.toggle('hidden', m !== 'pdf' || !spDoc);
+$('optZone').classList.toggle('hidden', m !== 'opt' || !!optDoc || isImporting());$('optPanel').classList.toggle('hidden', m !== 'opt' || !optDoc);
+$('historySection').classList.toggle('hidden', m !== 'history');$('back').textContent = m === 'history' ? '← Voltar' : '← Ferramentas';if(m==='history')renderDownloadRequests();
+render();
+}
+let splitRevision=0,splitPlan=null;
+function readSplitOptions(){return Object.freeze({limit:parseSize($("spLimit").value),maxAttachments:parseAttachments($("maxAtt").value),balance:$("spBal").checked});}
+function showSplitAlerts(list){$("spWarn").replaceChildren(...list.map(a=>{const d=el("div","callout "+a.kind);d.append(el("strong","",a.title),el("span","",a.text));return d;}));}
+function resetSplitOutput(){splitPlan=null;spParts=[];$("spParts").replaceChildren();$("spAll").disabled=true;$("spSummary").textContent="";$("spWarn").textContent="";}
+function applySplitPlan(source,result,options){
+ result.parts.forEach((p,i)=>{p.name=p.original?source.originalName:`${source.name}_parte_${i+1}_de_${result.parts.length}.pdf`;});spParts=result.parts;splitPlan={...result,options,revision:++splitRevision,source};
+ $("spName").textContent=source.originalName;$("spInfo").textContent=fmtMB(source.size);
+  const alerts=[];
+  if(result.kind==="original") {
+   alerts.push({kind:"info",title:"Este PDF já cabe no limite",text:"Será baixado o arquivo original, sem divisão e sem alterações. O app não analisa as páginas neste caso, então isso não valida a segurança nem a autenticidade do documento."});
+   $("spInfo").textContent=fmtMB(source.size)+" · original intacto";
+  } else {
+   $("spInfo").textContent=`${result.pages} páginas · original: ${fmtMB(source.size)}`;
+   if(result.parts.length===1&&!result.overPages.length)alerts.push({kind:"info",title:"Resultou em 1 arquivo dentro do limite",text:"O original era maior que o limite. As imagens não foram recomprimidas."});
+  }
+  if(result.overPages.length){const o=result.overPages,big=o.reduce((m,p)=>p.bytes>m.bytes?p:m,o[0]);alerts.push({kind:"err",title:"Divisão não liberada",text:(o.length===1?`A página ${big.page}, isolada, gera ${fmtFit(big.bytes,result.limit)}, acima do limite de ${fmtMB(result.limit)}.`:`${o.length} páginas, cada uma isolada, passam do limite de ${fmtMB(result.limit)}. A maior é a página ${big.page} (${fmtFit(big.bytes,result.limit)}).`)+" O divisor não corta uma página entre partes. Aumente o limite ou reduza o arquivo antes com o Otimizar PDF."});}
+  else if(result.exceedsAttachments)alerts.push({kind:"warn",title:"Mais partes do que o máximo configurado",text:`O plano gerou ${result.parts.length} partes e o máximo é ${result.maxAttachments}. É só um alerta de quantidade: confira se o destino aceita esse número de anexos, ou reduza o arquivo com o Otimizar PDF para gerar menos partes.`});
+  showSplitAlerts(alerts);
+  $("spSummary").textContent=`${result.parts.length} ${result.kind==="original"?"arquivo original":result.parts.length===1?"parte":"partes"} · limite de ${fmtMB(result.limit)} por arquivo`;
+  $("spAll").textContent=result.kind==="original"?"Baixar original intacto":"Baixar todas as partes";
+  $("spAll").disabled=!!result.overPages.length||!!activeOperation;
+  $("spParts").replaceChildren(...result.parts.map((part,i)=>{
+   const row=el("div","part"),head=el("div","ph");
+   const range=part.original?"Mesmo arquivo selecionado; sem reescrita":part.list.length===1?`página ${part.list[0].idx+1}`:`páginas ${part.list[0].idx+1}–${part.list[part.list.length-1].idx+1} (${part.list.length})`;
+   head.append(el("strong","",part.original?"Original intacto":`Parte ${i+1} de ${result.parts.length}`),el("span","muted",range));
+   const over=part.bytes.length>result.limit,m=el("div","meter"),fill=el("i");m.dataset.s=over?"over":part.bytes.length>result.limit*0.9?"near":"ok";fill.style.width=Math.min(100,part.bytes.length/result.limit*100)+"%";m.append(fill);
+   const button=el("button","sec",result.overPages.length?"Bloqueado":part.original?"Baixar original":"Baixar");button.type="button";button.disabled=!!result.overPages.length;button.onclick=()=>downloadSplitPart(part);
+   row.append(head,m,el("span","sz",fmtFit(part.bytes.length,result.limit)+(over?" · acima":"")),button);return row;
+  }));
 
-    /* ---------- janela de progresso da geração ---------- */
-    const prog = $('prog'), pgBar = $('pgBar'), pgFill = $('pgFill'), pgLine = $('pgLine'),
-      pgTries = $('pgTries'), pgTime = $('pgTime'), pgCancel = $('pgCancel');
-    let genCancel = false, pgTimer = 0, pgPrev = null;
-    function progOpen(tries, limit) {
-      genCancel = false; pgCancel.disabled = false;
-      $('pgLimit').textContent = fmt(limit);
-      pgTries.replaceChildren(...tries.map(([dpi, q]) => {
-        const li = el('li', 'wait');
-        li.append(el('span', 'mk'), el('span', '', `${dpi} DPI · qualidade ${Math.round(q * 100)}%`), el('span', 'st', 'aguardando'));
-        return li;
-      }));
-      progBar(0, 1, 'Preparando…');
-      const t0 = Date.now(); pgTime.textContent = '0 s';
-      pgTimer = setInterval(() => {pgTime.textContent = Math.floor((Date.now() - t0) / 1000) + ' s';}, 250);
-      pgPrev = document.activeElement;
-      prog.classList.remove('hidden'); document.body.classList.add('modal'); pgCancel.focus();
-    }
-    function progClose() {
-      if (prog.classList.contains('hidden')) return;
-      clearInterval(pgTimer); prog.classList.add('hidden'); document.body.classList.remove('modal');
-      if (pgPrev && pgPrev.focus) pgPrev.focus();
-    }
-    function progBar(done, total, text) {
-      const pct = total ? Math.round(done / total * 100) : 0;
-      pgFill.style.width = pct + '%'; pgBar.setAttribute('aria-valuenow', String(pct)); pgLine.textContent = text;
-    }
-    function progTry(k, state, status) {
-      const li = pgTries.children[k];
-      if (li) {li.className = state; li.lastChild.textContent = status;}
-    }
-    pgCancel.onclick = () => {genCancel = true; pgCancel.disabled = true; pgLine.textContent = 'Cancelando…';};
-    document.addEventListener('keydown', (e) => {
-      if (prog.classList.contains('hidden')) return;
-      if (e.key === 'Escape') pgCancel.click(); else if (e.key === 'Tab') e.preventDefault();
-    });
+}
+async function loadPdf(file){
+ if(modalState){msg("Feche o diálogo antes de importar um PDF.",true);return;}if(!file)return;
+ if(activeOperation&&!["loading-pdf","planning"].includes(activeOperation.stage)){denyMutation();return;}
+ let options;try{inputGuard(file.size);options=readSplitOptions();}catch(e){showOperationError(null,e);return;}
+ if((spDoc||activeOperation)&&!window.confirm("Substituir a seleção de PDF ou leitura atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada."))return;
+ if(activeOperation)cancelOperation("Leitura anterior substituída pela nova seleção confirmada.");
+ const source=Object.freeze({file,name:file.name.replace(/\.pdf$/i,""),originalName:file.name,size:file.size});const previous=spDoc;const op=beginOperation("loading-pdf",source.originalName,{options});loadOpenPdf(source.originalName);
+ try{setMode("pdf",true);const result=await workerJob(op,"pdf",{file,options},m=>{$("loadLine").textContent=source.originalName+" · "+m.text;});ensureCurrent(op);
+ const now=readSplitOptions();if(JSON.stringify(now)!==JSON.stringify(options))throw new TaskError("CANCELLED","Configuração mudou durante a leitura; resultado descartado.");
+ spDoc=source;applySplitPlan(source,result,options);setMode("pdf",true);msg("PDF carregado: "+source.originalName+". Confira os avisos antes de baixar.");
+ }catch(e){if(operationCurrent(op)){if(previous)msg(`Nova importação não aplicada; documento mantido: ${previous.originalName}. [${e.code||"INTERNAL"}] ${e.message}`,true);else showOperationError(op,e);}}
+ finally{endOperation(op);}
+}
+async function planSplit(){
+ if(denyMutation())return;if(!spDoc)return;let options;
+ try{options=readSplitOptions();}catch(e){resetSplitOutput();showOperationError(null,e);return;}
+ const source=spDoc;resetSplitOutput();const op=beginOperation("planning",source.originalName,{options});
+ try{const result=await workerJob(op,"pdf",{file:source.file,options},m=>{$("operationText").textContent=source.originalName+" · "+m.text;});ensureCurrent(op);if(source!==spDoc||JSON.stringify(readSplitOptions())!==JSON.stringify(options))throw new TaskError("CANCELLED","O documento ou a configuração mudou; resultado descartado.");applySplitPlan(source,result,options);msg("Plano conferido pelo tamanho real dos arquivos.");}
+ catch(e){if(operationCurrent(op)){resetSplitOutput();$("spSummary").textContent="Nenhuma parte liberada.";showSplitAlerts([{kind:"err",title:"Não foi possível analisar o PDF",text:`[${e.code||"INTERNAL"}] ${e.message} O original permanece intacto.`}]);showOperationError(op,e);}}
+ finally{endOperation(op);}
+}
+function checkedSplitPlan(){
+ if(!splitPlan||splitPlan.source!==spDoc)throw new TaskError("INVALID_INPUT","Não há plano válido; confirme a configuração e aguarde a análise.");
+ if(JSON.stringify(readSplitOptions())!==JSON.stringify(splitPlan.options))throw new TaskError("INVALID_INPUT","A configuração mudou. Recalcule o plano antes de baixar.");
+ if(splitPlan.overPages.length||splitPlan.parts.some(p=>p.bytes.length>splitPlan.limit))throw new TaskError("INVALID_INPUT","Página acima do limite; nenhum download deste plano é permitido.");return splitPlan;
+}
+function downloadSplitPart(part){if(denyMutation())return;let op;try{const plan=checkedSplitPlan();if(!plan.parts.includes(part))throw new TaskError("INVALID_INPUT","Parte de um plano antigo.");op=beginOperation("downloading",part.name,{plan});if(checkedSplitPlan()!==plan)throw new TaskError("CANCELLED","Plano mudou.");safeSave(op,part.bytes,part.name);msg("Download solicitado: "+part.name+" · "+fmtMB(part.bytes.length)+". Confira no navegador; gravação não confirmada.");}catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}}
+async function downloadAllSplitParts(){if(denyMutation())return;let op;let sent=0;try{const plan=checkedSplitPlan();if(plan.exceedsAttachments&&!window.confirm(`Este plano tem ${plan.parts.length} partes, acima de ${plan.maxAttachments} anexos. Solicitar o lote mesmo assim?`))return;
+ const batch=Object.freeze(plan.parts.slice());op=beginOperation("downloading",`${batch.length} arquivos`,{plan,batch});
+ for(let i=0;i<batch.length;i++){ensureCurrent(op);if(checkedSplitPlan()!==plan)throw new TaskError("CANCELLED","Plano mudou; restante do lote bloqueado.");const part=batch[i];safeSave(op,part.bytes,part.name);sent++;$("operationText").textContent=`Downloads solicitados: ${sent}/${batch.length}`;if(i+1<batch.length)await cancellablePause(op,500);}
+ msg(`${sent} download(s) solicitado(s). Confira os arquivos salvos; o navegador pode bloquear downloads múltiplos.`);
+ }catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}}
+function clearSplitPdf(){if(denyMutation())return;if(spDoc&&!window.confirm("Descartar a seleção de PDF e o plano atual? O arquivo no computador não será excluído."))return;spDoc=null;++splitRevision;resetSplitOutput();msg("");setMode("pdf");}
+function routeFiles(list){if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}const fs=Array.from(list||[]);if(!fs.length)return;const pdfs=fs.filter(f=>f.type==="application/pdf"||/\.pdf$/i.test(f.name));if(pdfs.length&&(pdfs.length!==1||fs.length!==1)){msg("Selecione exatamente 1 PDF por vez, sem misturar imagens. Nenhum arquivo da seleção foi importado.",true);return;}if(pdfs.length){if(mode==="opt")loadOpt(pdfs[0]);else loadPdf(pdfs[0]);return;}if(denyMutation())return;setMode("img");addFiles(fs);}
 
-    render();
-    if (HELP_AUTO_OPEN) openHelp();
-  </script>
-</body>
+/* ---------- módulo "Otimizar PDF": interface (o processamento roda no worker; Criar e Dividir não são afetados) ---------- */
+let optUrls=[],cmpSync=false;
+function optTargetBytes(){try{return parseSize($("optTarget").value);}catch(e){return null;}}
+function optRefresh(){
+ const locked=!!activeOperation,tb=optTargetBytes();
+ $("optSave").disabled=locked||!optOut;
+ $("optRun").disabled=locked||!optDoc||!optScanRes||!optScanRes.eligible||tb===null||optScanRes.size<=tb;
+ $("optTarget").disabled=locked;
+}
+function optTargetNote(){
+ const note=$("optTargetNote"),al=$("optAlert"),inp=$("optTarget");
+ const show=(kind,title,text)=>{al.className="callout "+kind;$("optAlertTitle").textContent=title;$("optAlertText").textContent=text;};
+ inp.removeAttribute("aria-invalid");note.textContent="";al.className="callout hidden";
+ if(!optScanRes)return;
+ let tb;try{tb=parseSize(inp.value);}catch(e){inp.setAttribute("aria-invalid","true");show("err","Meta de tamanho inválida","Informe um valor de 0,5 a 100 MB, em passos de 0,1. Enquanto a meta estiver inválida, o botão Otimizar PDF fica desabilitado.");return;}
+ if(!optScanRes.eligible){const top=Object.entries(optScanRes.reasons).sort((a,b)=>b[1]-a[1])[0];show("warn","Não há imagens que possam ser otimizadas",`O botão Otimizar PDF está desabilitado porque nenhuma imagem deste PDF é suportada nesta versão${top?` (motivo mais comum: ${top[0]})`:""}. O arquivo não foi alterado.`);return;}
+ if(optScanRes.size<=tb){show("info","Este PDF já está dentro da meta",`O arquivo tem ${fmtMB(optScanRes.size)} e a meta é ${fmtMB(tb)}, então não há o que reduzir e o botão Otimizar PDF está desabilitado. Para reduzir mais, informe uma meta menor.`);return;}
+ note.textContent=`Tamanho atual: ${fmtMB(optScanRes.size)}. É preciso reduzir ${fmtMB(optScanRes.size-tb)} (${Math.round((1-tb/optScanRes.size)*100)}%).`;
+}
+function optProgressOpen(name){
+ loadState=null;loadMode("img");msg("");
+ $("loadTitle").textContent="Otimizando o PDF…";$("loadLine").textContent=name;$("loadNote").textContent="O PDF fica neste computador. Você pode cancelar a qualquer momento.";
+ $("loadSkel").replaceChildren();$("loadFill").style.width="0%";$("loadPct").textContent="0%";$("loadBar").setAttribute("aria-valuenow","0");$("loadAnnounce").textContent="Otimizando o PDF…";
+ const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ if(loadCard.scrollIntoView)loadCard.scrollIntoView({block:"nearest",behavior:reduce?"auto":"smooth"});
+}
+function optProgress(m){
+ const t=m.total||0,d=Math.min(m.done||0,t),pct=t?Math.floor(100*d/t):0,sk=$("loadSkel");
+ if(!sk.children.length&&t)sk.replaceChildren(...Array.from({length:10},()=>el("span","skel")));
+ $("loadFill").style.width=pct+"%";$("loadBar").setAttribute("aria-valuenow",String(pct));$("loadPct").textContent=pct+"%";
+ $("loadLine").textContent=m.text||"Otimizando imagens…";
+ const ready=t?Math.floor(d/t*sk.children.length+1e-9):0;Array.from(sk.children).forEach((n,i)=>n.classList.toggle("done",i<ready));
+}
+function buildOptTable(){
+ const sc=optScanRes,rows=sc.pages.slice(0,300).map((p,i)=>{
+  const after=optRes&&optRes.pages?optRes.pages[i]:null;let st;
+  if(!p.imgs)st="Sem imagens";else if(after)st=after.after<after.before?"Reduzida":"Sem alteração";
+  else st=p.ok===p.imgs?"Otimizável":p.ok?`Parcial (${p.ok} de ${p.imgs})`:"Não otimizável: "+(p.reason||"formato não suportado");
+  const tr=el("tr");tr.append(el("td","num",String(i+1)),el("td","num",String(p.imgs)),el("td","num",p.dpi?Math.round(p.dpi)+" DPI":"–"),el("td","num",p.imgs?fmtMB(p.bytes):"–"),el("td","num",after?fmtMB(after.after):"–"),el("td","",st));return tr;});
+ $("optRows").replaceChildren(...rows);$("optMore").textContent=sc.pages.length>300?`Mostrando as primeiras 300 de ${sc.pages.length} páginas.`:"";
+}
+function optCmpClear(){optUrls.forEach(u=>URL.revokeObjectURL(u));optUrls=[];$("cmpImgA").removeAttribute("src");$("cmpImgB").removeAttribute("src");$("optCmp").classList.add("hidden");}
+function showOptCompare(pv){
+ const a=URL.createObjectURL(new Blob([pv.before],{type:"image/jpeg"})),b=URL.createObjectURL(new Blob([pv.after],{type:"image/jpeg"}));optUrls.push(a,b);
+ $("cmpImgA").src=a;$("cmpImgB").src=b;$("cmpImgA").style.width=$("cmpImgB").style.width=pv.w0+"px";$("cmpA").scrollTo(0,0);$("cmpB").scrollTo(0,0);
+ $("optCmpCap").textContent=`Página ${pv.page}, a imagem com maior redução (${pv.w0}×${pv.h0} → ${pv.w1}×${pv.h1} px), ampliada a 100 % da imagem original. As duas áreas rolam juntas.`;$("optCmp").classList.remove("hidden");
+}
+function showOptResult(){
+ const box=$("optResult"),r=optRes;optCmpClear();box.classList.toggle("hidden",!r);if(!r)return;
+ box.classList.toggle("none",!r.pdf||!r.reached);
+ const pct=Math.max(0,Math.round((1-r.after/r.before)*100)),adj=`Ajuste aplicado: resolução a até ${Math.round(r.scale*100)} % do atual (nunca abaixo de 110 DPI) e qualidade ${Math.round(r.quality*100)} %. ${r.replaced} de ${r.eligible} imagens reduzidas; ${r.kept} mantidas como estavam.`;
+ if(!r.pdf){$("optResTitle").textContent="Não foi possível reduzir acima do piso de leitura";$("optResText").textContent="Mesmo no piso (110 DPI e qualidade 65 %), o PDF não ficou menor. Nenhum arquivo novo foi gerado. Use Dividir PDF para dividir o original em partes.";}
+ else if(r.reached){$("optResTitle").textContent=`De ${fmtMB(r.before)} para ${fmtMB(r.after)} (${pct}% menor): meta de ${fmtMB(r.target)} atingida`;$("optResText").textContent=adj+" Confira a nitidez abaixo antes de enviar.";}
+ else{$("optResTitle").textContent=`Meta não atingida: o menor tamanho possível é ${fmtMB(r.after,"up")} (meta de ${fmtMB(r.target)})`;$("optResText").textContent=`Para não passar do piso de leitura (110 DPI e qualidade 65 %), o app parou aqui, ${pct}% menor que o original. ${adj} Para chegar à meta, use Dividir PDF no arquivo baixado.`;}
+ if(r.pdf&&r.preview)showOptCompare(r.preview);
+}
+function optResetResult(){optOut=null;optRes=null;showOptResult();if(optScanRes)buildOptTable();optRefresh();}
+async function loadOpt(file){
+ if(modalState){msg("Feche o diálogo antes de importar um PDF.",true);return;}if(!file)return;
+ if(activeOperation&&activeOperation.stage!=="loading-pdf"){denyMutation();return;}
+ try{inputGuard(file.size);}catch(e){showOperationError(null,e);return;}
+ if((optDoc||activeOperation)&&!window.confirm("Substituir o PDF atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada."))return;
+ if(activeOperation)cancelOperation("Leitura anterior substituída pela nova seleção confirmada.");
+ const source=Object.freeze({file,name:file.name.replace(/\.pdf$/i,""),originalName:file.name,size:file.size}),previous=optDoc,op=beginOperation("loading-pdf",source.originalName);loadOpenPdf(source.originalName);
+ try{setMode("opt",true);const result=await workerJob(op,"optscan",{file},m=>{$("loadLine").textContent=source.originalName+" · "+m.text;});ensureCurrent(op);
+  optDoc=source;optScanRes=result;optOut=null;optRes=null;
+  $("optName").textContent=source.originalName;$("optInfo").textContent=`${fmtMB(result.size)} · ${result.pages.length} ${result.pages.length===1?"página":"páginas"}`;
+  const top=Object.entries(result.reasons).sort((a,b)=>b[1]-a[1])[0];
+  $("optNote").textContent=result.eligible?`${result.eligible} de ${result.imageObjects} imagens podem ser otimizadas.`:`Nenhuma imagem deste PDF pode ser otimizada nesta versão${top?` (motivo mais comum: ${top[0]})`:""}. O arquivo não foi alterado.`;
+  optTargetNote();buildOptTable();showOptResult();setMode("opt",true);{const tb=optTargetBytes();msg("PDF analisado: "+source.originalName+"."+(tb!==null&&result.size<=tb?` Ele já está dentro da meta de ${fmtMB(tb)}; não há o que otimizar.`:""));}
+ }catch(e){if(operationCurrent(op)){if(previous)msg(`Nova importação não aplicada; documento mantido: ${previous.originalName}. [${e.code||"INTERNAL"}] ${e.message}`,true);else showOperationError(op,e);}}
+ finally{endOperation(op);}
+}
+async function runOpt(){
+ if(denyMutation())return;if(!optDoc||!optScanRes)return;
+ let target;try{target=parseSize($("optTarget").value);}catch(e){showOperationError(null,e);return;}
+ if(optScanRes.size<=target){msg("O PDF já cabe na meta de tamanho.");return;}
+ const source=optDoc;optResetResult();
+ const op=beginOperation("optimizing",source.originalName);optProgressOpen(source.originalName);
+ try{const res=await workerJob(op,"optrun",{file:source.file,target},optProgress);ensureCurrent(op);
+  optRes=res;optOut=res.pdf||null;buildOptTable();showOptResult();
+  msg(!res.pdf?"Não foi possível reduzir acima do piso de leitura. Nenhum arquivo novo foi gerado.":res.reached?`PDF otimizado: ${fmtMB(res.before)} → ${fmtMB(res.after)}. Confira a nitidez antes de enviar.`:`Meta não atingida: menor tamanho possível ${fmtMB(res.after,"up")}. Confira a nitidez antes de enviar.`);
+ }catch(e){if(operationCurrent(op))showOperationError(op,e);}
+ finally{endOperation(op);}
+}
+function saveOpt(){
+ if(denyMutation())return;if(!optOut||!optDoc)return;let op;
+ try{const name=`${optDoc.name}_otimizado.pdf`,bytes=optOut;op=beginOperation("downloading",name);safeSave(op,bytes,name);msg("Download solicitado: "+name+" · "+fmtMB(bytes.length)+". Confira no navegador; gravação não confirmada.");}
+ catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}
+}
+function clearOpt(){if(denyMutation())return;optDoc=null;optScanRes=null;optOut=null;optRes=null;$("optRows").replaceChildren();showOptResult();$("optNote").textContent="";optTargetNote();setMode("opt",true);msg("");restoreFocus({id:"optBtn"});}
+$("cardOpt").onclick=()=>setMode("opt");
+$("optBtn").onclick=()=>{if(!activeOperation)$("optInput").click();else denyMutation();};
+$("optInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};
+$("optRun").onclick=runOpt;$("optSave").onclick=saveOpt;$("optClear").onclick=clearOpt;
+$("optTarget").oninput=()=>{optTargetNote();optRefresh();};$("optTarget").onchange=()=>{if(optRes)optResetResult();optTargetNote();optRefresh();};
+[["cmpA","cmpB"],["cmpB","cmpA"]].forEach(([from,to])=>{$(from).onscroll=()=>{if(cmpSync)return;cmpSync=true;$(to).scrollLeft=$(from).scrollLeft;$(to).scrollTop=$(from).scrollTop;requestAnimationFrame(()=>{cmpSync=false;});};});
+$('cardImg').onclick = () => setMode('img'); $('cardPdf').onclick = () => setMode('pdf');
+$('hdrTitle').onclick = () => setMode('home');
+$('back').onclick = () => { const fromHistory = mode === 'history'; setMode(fromHistory ? modeBeforeHistory : 'home'); if (fromHistory) $('historyBtn').focus(); };
+$('historyBtn').onclick = () => { if (!HISTORY_ENABLED || mode === 'history' || denyMutation()) return; modeBeforeHistory = mode; setMode('history', true); $('back').focus(); };
+$('histFilter').onchange = (e) => { historyFilter = e.target.value; renderDownloadRequests(); };
+$("pdfBtn").onclick=()=>{if(!activeOperation||["loading-pdf","planning"].includes(activeOperation.stage))$("pdfInput").click();else denyMutation();};
+$("pdfInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};
+["spLimit","maxAtt","spBal"].forEach(id=>{$(id).onchange=planSplit;if(id!=="spBal")$(id).oninput=()=>{if(denyMutation())return;resetSplitOutput();try{readSplitOptions();$("spSummary").textContent="Confirme o campo (Tab/Enter) para recalcular.";}catch(e){$("spWarn").textContent=e.message;}};});
+$("spClear").onclick = clearSplitPdf;
+$("spAll").onclick = downloadAllSplitParts;
+$("operationCancel").onclick=()=>cancelOperation();$("loadCancel").onclick=()=>cancelOperation("Importação cancelada. A seleção anterior foi mantida.");document.addEventListener("keydown",e=>{if(!modalState&&e.key==="Escape"&&activeOperation&&!["generating","confirming"].includes(activeOperation.stage))cancelOperation();});
+$("clearDownloads").onclick=clearDownloadRequests;
+renderDownloadRequests();
+setMode('home');
+/* "Como usar" abre automaticamente só na primeira visita; depois, apenas pelo botão. */
+try { if (HELP_AUTO_OPEN && !localStorage.getItem('optimizerPdfAjudaVista')) { openHelp(); localStorage.setItem('optimizerPdfAjudaVista', '1'); } }
+catch (e) { if (HELP_AUTO_OPEN) openHelp(); /* sem armazenamento local: mantém o comportamento anterior */ }
 
-</html>
+
+
+</script>
+</body></html>

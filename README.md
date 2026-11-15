@@ -1,218 +1,199 @@
 # OptimizerPDF
 
-Aplicação web de arquivo único para **organizar imagens e gerar um PDF otimizado**, ajustado automaticamente a um limite de tamanho. Funciona 100% offline, sem bibliotecas e sem enviar nenhum dado a servidores.
+Aplicação web offline para organizar imagens, dividir PDFs e reduzir o tamanho de documentos PDF sem depender de serviços externos.
 
-**Teste agora:** [abrir o OptimizerPDF no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
+Teste online: [abrir no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
 
-**Versão atual:** 1.5.0  
-**Autor original:** Guilherme Medeiros Stelmach (Gui Stelmach)
-
----
-
-## Sumário
-
-- [Contexto e objetivo](#contexto-e-objetivo)
-- [Funcionalidades](#funcionalidades)
-- [Como usar](#como-usar)
-- [Regras de paginação e layout](#regras-de-paginação-e-layout)
-- [Tamanho do PDF](#tamanho-do-pdf)
-- [Arquitetura e funcionamento](#arquitetura-e-funcionamento)
-- [Configuração](#configuração)
-- [Segurança e privacidade](#segurança-e-privacidade)
-- [Compatibilidade](#compatibilidade)
-- [Limitações conhecidas](#limitações-conhecidas)
-- [Solução de problemas](#solução-de-problemas)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Histórico de versões](#histórico-de-versões)
-- [Licença](#licença)
+Versão atual: 1.9.0  
+Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 
 ---
 
-## Contexto e objetivo
+## Visão geral
 
-Muitos fluxos de trabalho exigem consolidar capturas de tela e comprovantes em um único PDF: anexar evidências a um chamado, preencher um formulário, enviar documentos por e-mail. Os arquivos chegam soltos, em formatos e tamanhos variados, e o destino costuma impor um **limite de tamanho** baixo para o anexo. Fazer isso à mão (colar imagem por imagem, exportar, conferir o tamanho e recomeçar) é lento e propenso a erro.
+Este projeto nasceu de uma dor real dentro da empresa em que trabalhei: clientes enviavam diversos prints e comprovantes em imagens, e a equipe precisava organizar tudo em um único PDF para atender a um limite de tamanho muito rígido — em geral 2 MB. Antes, a tarefa era feita manualmente no Microsoft Word: cada imagem era posicionada em uma folha, o arquivo era salvo e, quando excedia o limite, o processo era repetido, criando uma rotina lenta e pouco confiável.
 
-O OptimizerPDF automatiza essa etapa:
+Em muitos casos, quando o arquivo ultrapassava o limite, a solução era abrir o PDF em um navegador, simular a impressão e salvar novamente apenas parte das páginas, repetindo o processo várias vezes para dividir em 2, 3 ou mais partes. Isso demandava tempo, atenção e retrabalho manual, além de aumentar o risco de erro humano.
 
-1. recebe as imagens do usuário;
-2. permite organizar a ordem e visualizar as páginas;
-3. gera o PDF final já ajustado ao limite de tamanho.
+O OptimizerPDF foi criado para resolver esse problema de forma prática, rápida e segura. Ele organiza automaticamente as imagens em páginas, gera o PDF com o layout adequado e ainda permite dividir PDFs já existentes em partes menores com rapidez. Em vez de gastar mais de 30 minutos em uma tarefa repetitiva, o processo passou a ser concluído em menos de 1 minuto em muitos casos.
+
+Além disso, a decisão de desenvolver toda a solução em um único arquivo HTML com JavaScript puro foi estratégica: o ambiente da empresa era altamente controlado e exigia segurança, isolamento e ausência de dependências externas. A ferramenta foi pensada para funcionar de forma local, sem envio de dados para servidores e sem uso de frameworks, reforçando o princípio de ser "blindada" em termos de infraestrutura e risco operacional.
+
+Hoje, o projeto representa uma solução real para um problema de produtividade e automação de processos internos, demonstrando uma abordagem orientada a resolver desafios concretos com tecnologia simples, eficiente e segura.
+
+O app roda 100% no navegador e trabalha com três fluxos principais:
+
+1. Criar um novo PDF a partir de imagens;
+2. Dividir um PDF existente em partes dentro de um limite;
+3. Otimizar um PDF existente para atingir uma meta de tamanho.
+
+O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem dependências externas nem envio de dados a servidores.
 
 ## Funcionalidades
 
-- **Seleção flexível:** escolha de arquivos ou arraste e solte em qualquer lugar da página.
-- **Organização visual:** reordenação por arrastar e soltar ou pelos botões ↑ ↓, remoção individual e ampliação da imagem. Arrastar uma imagem já anexada só a reordena: novas imagens entram apenas a partir de arquivos externos.
-- **Ordem preservada:** a ordem da lista é exatamente a ordem do PDF.
-- **Pré-visualização das páginas:** mostra como as imagens ficarão distribuídas, com destaque cruzado entre a lista e as páginas.
-- **PDF gerado internamente:** o arquivo é baixado direto, sem janela de impressão e sem depender de impressora virtual.
-- **Ajuste automático ao limite:** o limite padrão é de 2 MB (configurável). O app reduz resolução e qualidade em etapas até o PDF caber.
-- **Tamanho exato:** o medidor mostra o tamanho real do PDF gerado em relação ao limite.
-- **Janela de progresso:** durante a geração, uma janela bloqueia a tela e mostra a barra de andamento, a tentativa em curso (resolução e qualidade), o resultado de cada tentativa, o tempo decorrido e o botão **Cancelar**.
-- **Confirmação ao exceder o limite:** se o PDF passar do limite mesmo na menor qualidade, nada é baixado automaticamente. O app mostra o tamanho original, o tamanho do PDF, o limite e o excedente, e pergunta se o usuário quer salvar assim mesmo.
-- **Nome padrão de arquivo:** `Documento_AAAA-MM-DD.pdf`, com a data local do dia.
-- **Janela de ajuda:** orientações diretas sobre o uso, abertas ao carregar a página e pelo botão **Como usar**.
-- **Tratamento de duplicatas e erros:** arquivos repetidos são ignorados e imagens ilegíveis são removidas com aviso.
-
-## Destaques técnicos
-
-- **Gerador de PDF próprio**, escrito do zero (PDF 1.4), que embute JPEGs diretamente (`DCTDecode`), sem nenhuma dependência.
-- **Controle de tamanho por medição real**: o app testa combinações decrescentes de resolução e qualidade e mede o PDF pronto, em vez de estimar.
-- **Paginação como função pura**, testada com 20.000 listas aleatórias (ordem preservada, limites de linhas e de imagens, imagens dentro da área útil).
-- **Interface orientada a estado**: a tela é reconstruída a partir de uma única fonte de verdade, o que evita inconsistências.
-- **Segurança por desenho**: política de segurança de conteúdo que bloqueia qualquer acesso à rede, nenhum armazenamento local e nomes de arquivo sempre tratados como texto.
-- **Experiência cuidada**: pré-visualização fiel das páginas, janela de progresso com cancelamento, confirmação antes de salvar um PDF acima do limite, acessibilidade por teclado.
+- Criação de PDF a partir de imagens em qualquer ordem.
+- Reordenação visual por arrastar, mover para cima/baixo e remover itens individualmente.
+- Pré-visualização fixa das páginas com destaque cruzado entre a lista e a página selecionada.
+- Geração interna de PDF sem usar `window.print()` ou impressora virtual.
+- Ajuste automático de qualidade e resolução para respeitar um limite em MB.
+- Confirmação explícita antes de baixar um PDF acima do limite.
+- Divisão de PDF existente em partes com limite por parte e máximo de anexos.
+- Preservação do original quando o arquivo já cabe no limite.
+- Otimização de PDFs existentes com comparação antes/depois e meta de tamanho.
+- Piso de leitura para não degradar excessivamente arquivos que precisam permanecer legíveis.
+- Bloqueio de operações com arquivos incompatíveis e mensagens claras sobre o motivo.
 
 ## Como usar
 
-1. Abra o arquivo `index.html` em um navegador.
-2. **Selecione** as imagens ou arraste-as para a página. São aceitos JPG, PNG, WebP, GIF, BMP e AVIF.
-3. **Organize** a ordem dos cards. Clique em uma imagem para ampliá-la e em **×** para removê-la.
-4. Escolha os **espaços por página** (1, 2 ou 4) e confira a pré-visualização.
-5. Ajuste o **limite (MB)**, se necessário.
-6. Clique em **Gerar PDF**. O arquivo é baixado automaticamente.
+### 1) Criar PDF a partir de imagens
 
-> As imagens existem apenas na memória do navegador. Ao fechar ou recarregar a página, elas são descartadas, então gere o PDF antes de sair.
+1. Abra `index.html` no navegador ou use a versão publicada no GitHub Pages.
+2. Clique em `Criar novo PDF`.
+3. Selecione imagens ou arraste-as para a página.
+4. Organize a ordem e confirme a pré-visualização.
+5. Ajuste o `Limite (MB)` e clique em `Gerar PDF`.
+6. O navegador solicitará o download do arquivo final.
+
+Formatos aceitos em imagens: JPG, PNG, WebP, GIF, BMP e AVIF.
+
+Nome padrão do arquivo de saída: `PDFGerado__AAAA-MM-DD.pdf`.
+
+### 2) Dividir um PDF existente
+
+1. Clique em `Dividir PDF existente`.
+2. Selecione o arquivo PDF.
+3. Ajuste o `Limite por parte (MB)` e o `Máx. de anexos`.
+4. O app analisa se o arquivo já cabe ou se precisa ser dividido.
+5. Se a divisão for liberada, o download em lote pode ser solicitado.
+
+Arquivos protegidos por senha, com anotações, formulários ou recursos que não podem ser preservados podem ser bloqueados com explicação.
+
+### 3) Otimizar um PDF existente
+
+1. Clique em `Otimizar PDF`.
+2. Selecione o arquivo PDF.
+3. Informe a meta de tamanho desejada em MB.
+4. O app analisa as imagens, reduz resolução e qualidade quando necessário e mostra a comparação antes/depois.
+5. Se a meta for atingida, o botão de download fica disponível.
+
+O arquivo original nunca é alterado; o resultado sai como um novo PDF com sufixo `_otimizado`.
 
 ## Regras de paginação e layout
 
-A página é A4 (210 × 297 mm), com margens de 12 mm nas laterais e 14 mm em cima e embaixo. O espaçamento entre imagens é de 3 mm na horizontal e 5 mm na vertical.
+Quando o app cria um PDF a partir de imagens, a paginação usa um layout em A4, em retrato, com margens e espaçamentos fixos.
 
-| Regra | Comportamento |
-|---|---|
-| Ordem | Sempre a ordem da lista. Nenhuma imagem é puxada de outra posição. |
-| Imagens verticais | Duas verticais **consecutivas** ficam lado a lado, quando houver espaço. |
-| Imagens horizontais | Ocupam uma linha inteira. |
-| Linhas por página | No máximo 2. |
-| Espaços por página | Número máximo de imagens por página (1, 2 ou 4). Quatro imagens só ocorrem com dois pares de verticais. |
-| Ampliação | Imagens pequenas não são ampliadas além do tamanho natural (referência de 96 dpi). |
-| Posicionamento | Cada imagem é ajustada à célula, mantendo a proporção e centralizada. |
+- Ordem preservada da lista.
+- Imagens verticais consecutivas podem ficar lado a lado quando houver espaço.
+- Imagens horizontais ocupam uma linha inteira.
+- Máximo de duas linhas por página.
+- Espaços por página: 1, 2 ou 4 imagens.
+- Ajuste proporcional e centralizado da imagem dentro da célula.
 
-## Tamanho do PDF
+## Tamanho do PDF e otimização
 
-O limite padrão de **2 MB** é pensado para anexos com restrição de tamanho. O fluxo de geração é:
+O limite padrão de 2 MB é usado para cenários de anexos com restrição de arquivo. O fluxo de geração é:
 
-1. Cada imagem é redimensionada para o tamanho em que será impressa, limitado à sua resolução original, e convertida em JPEG sobre fundo branco.
-2. O PDF é montado e seu tamanho é medido.
-3. Se passar do limite, o app tenta a próxima combinação, mais leve, de resolução e qualidade.
+1. cada imagem é redimensionada para a área impresa;
+2. o PDF é montado e seu tamanho real é medido;
+3. se o resultado exceder o limite, o app tenta combinações mais leves até encontrar uma versão aceitável.
 
-As tentativas, em ordem:
+Na criação de PDF a partir de imagens, as tentativas de compressão seguem a lógica de resolução e qualidade, em ordem decrescente de peso:
 
-| Tentativa | Resolução | Qualidade JPEG |
-|---|---|---|
-| 1 | 200 DPI | 88% |
-| 2 | 200 DPI | 80% |
-| 3 | 160 DPI | 80% |
-| 4 | 160 DPI | 72% |
-| 5 | 130 DPI | 72% |
-| 6 | 110 DPI | 65% |
+- 200 DPI / 88%
+- 200 DPI / 80%
+- 160 DPI / 80%
+- 160 DPI / 72%
+- 130 DPI / 72%
+- 110 DPI / 65%
 
-Pontos de atenção:
+Se mesmo o menor nível não atender ao limite, o app pede confirmação antes de baixar o arquivo acima do teto.
 
-- O valor **"originais"** exibido na tela é a soma dos arquivos de origem e **não** é o tamanho do PDF. O tamanho real aparece no medidor depois de gerar.
-- Se mesmo a última tentativa passar do limite, o PDF **não é baixado automaticamente**: o app exibe o tamanho original, o tamanho do PDF, o limite e o excedente, e pergunta se o usuário deseja salvar assim mesmo. Para reduzir, escolha **Não salvar**, remova imagens ou aumente o limite.
-- Prints com texto muito pequeno podem perder nitidez nas tentativas de menor qualidade. Confira o PDF antes de enviar.
+Para otimização de PDF existente, a ferramenta reduz primeiro a resolução e depois a qualidade, apenas até o ponto necessário, respeitando o piso de leitura de 110 DPI e qualidade 65%.
 
 ## Arquitetura e funcionamento
 
-O projeto é um único arquivo `index.html` com HTML, CSS e JavaScript puro.
+O projeto é um único arquivo `index.html` com HTML, CSS e JavaScript puro, sem bibliotecas externas.
 
 ```
-Seleção de arquivos
-        │
-        ▼
-Fila de leitura (3 simultâneas)
- ├─ decodifica a imagem (createImageBitmap, respeitando a orientação EXIF)
- ├─ obtém largura e altura
- └─ gera a miniatura (≈320 px)
-        │
-        ▼
-Paginação (ordem preservada) ──► Layout em milímetros
-        │                               │
-        ▼                               ▼
-Lista de cards + pré-visualização   Geração do PDF
-                                     ├─ redimensiona cada imagem (canvas) e codifica em JPEG
-                                     ├─ monta o PDF (gerador interno)
-                                     └─ tenta combinações mais leves até caber no limite
-                                             │
-                                             ▼
-                                     Download do arquivo (Blob)
+Interface
+  ├─ seleção de imagens ou PDF
+  ├─ organização e pré-visualização
+  ├─ planejamento de paginação/partes
+  └─ geração ou otimização do arquivo
+
+      ├─ leitura local dos arquivos
+      ├─ inspeção/validação do PDF
+      ├─ redimensionamento e compressão
+      ├─ montagem do documento final
+      └─ download do arquivo no navegador
 ```
 
-**Gerador de PDF interno.** Em vez de usar `window.print()` ou bibliotecas, o app escreve o PDF diretamente (PDF 1.4): catálogo, páginas, imagens JPEG incorporadas (`/DCTDecode`), fluxos de conteúdo e tabela de referências cruzadas. Isso dá ao app controle total do resultado e permite informar o tamanho exato do arquivo.
+Principais recursos técnicos:
 
-**Principais APIs do navegador:** Canvas, `createImageBitmap`, `Blob`, `URL.createObjectURL`, `TextEncoder`, Drag and Drop.
-
-## Configuração
-
-Os parâmetros ficam no início do bloco `<script>` do `index.html`.
-
-| Parâmetro | Local | Descrição |
-|---|---|---|
-| `BRAND` / `VERSION` | constantes | Nome exibido no cabeçalho e versão exibida no rodapé. |
-| `HELP_AUTO_OPEN` | constante | `true` abre a janela de ajuda ao carregar. `false` abre só pelo botão **Como usar**. |
-| `PW`, `PH`, `MX`, `MY`, `GX`, `GY` | constantes | Dimensões da página e margens e espaçamentos, em mm. |
-| `tries` | função `generate` | Combinações de resolução e qualidade tentadas na geração do PDF. |
-| Limite padrão | campo `limit` no HTML | Valor inicial do limite de tamanho, em MB. |
+- PDF gerado internamente com composição manual de páginas e streams de imagem.
+- leitura local de imagens com suporte a `createImageBitmap` e `canvas`.
+- geração de arquivos em `Blob` e download direto via navegador.
+- validação de integridade e regras de divisão para evitar resultados inválidos.
+- processamento local e sem rede.
 
 ## Segurança e privacidade
 
-- **Sem rede:** o arquivo não faz requisições e não carrega recursos externos. Uma política de segurança de conteúdo (CSP) no próprio HTML bloqueia conexões de rede (`connect-src 'none'`), e só permite imagens locais (`blob:` e `data:`).
-- **Sem persistência:** nada é salvo em `localStorage`, cookies ou disco. Ao fechar a página, as imagens e os endereços temporários são liberados da memória.
-- **Processamento local:** toda leitura, compressão e montagem do PDF acontecem no navegador do usuário.
-- **Auditabilidade:** o código é legível, sem minificação e sem dependências de terceiros. Para controle de distribuição, recomenda-se registrar o hash do arquivo aprovado:
+- o app não envia arquivos para nenhum servidor;
+- não usa `localStorage`, cookies ou persistência de sessão para manter arquivos;
+- o processamento acontece localmente no navegador;
+- a política de segurança do HTML bloqueia conexões de rede e recursos externos;
+- o código permanece legível e sem dependências de terceiros.
 
-  ```bash
-  sha256sum index.html
-  ```
+Para verificar uma distribuição, é possível registrar o hash do arquivo final com:
+
+```bash
+sha256sum index.html
+```
 
 ## Compatibilidade
 
-Recomenda-se um navegador moderno baseado em Chromium (Google Chrome ou Microsoft Edge) atualizado. O app depende de `createImageBitmap` com opções de redimensionamento, de `canvas.toBlob` com saída JPEG e do download via `Blob`.
+Recomendado usar um navegador moderno baseado em Chromium, como Google Chrome ou Microsoft Edge.
 
-> Valide o funcionamento no navegador e na versão em que o app será usado antes de distribuir, incluindo políticas que possam bloquear downloads ou o uso de canvas.
+O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`, `Blob` e download por arquivo local. Em ambientes com políticas rígidas de segurança, o download pode ser bloqueado; nessas situações, é necessário validar o comportamento do navegador antes de distribuir a ferramenta.
 
 ## Limitações conhecidas
 
-- O PDF é composto somente por imagens JPEG: não há texto selecionável e a transparência é convertida em fundo branco.
-- Formato de página fixo em A4, em retrato.
-- Máximo de 2 linhas por página.
-- Formatos que o navegador não decodifica (por exemplo, HEIC em alguns navegadores) não são lidos e a imagem é removida com aviso.
-- Não existe plano alternativo de geração via impressão do navegador: se uma política bloquear o download, o PDF não é gerado.
-- Imagens muito grandes ou em grande quantidade aumentam o uso de memória durante a geração.
-
-## Solução de problemas
-
-| Sintoma | Causa provável | O que fazer |
-|---|---|---|
-| Arquivo ignorado ao adicionar | Formato não suportado | Converta para JPG ou PNG. |
-| "Não foi possível ler" uma imagem | Arquivo corrompido ou formato não decodificado pelo navegador | Reexporte a imagem ou converta para JPG ou PNG. |
-| Geração demorada | Muitas imagens grandes, com várias tentativas | A janela de progresso mostra o andamento. Aguarde ou use **Cancelar**. |
-| PDF acima do limite | Muitas imagens ou imagens complexas | O app pede confirmação antes de salvar. Escolha **Não salvar** e remova imagens ou aumente o limite (MB). |
-| Texto do print pouco nítido | Qualidade reduzida para caber no limite | Aumente o limite ou reduza a quantidade de imagens. |
-| O download não inicia | Política do navegador bloqueando downloads | Verifique as configurações do navegador ou consulte as políticas da sua organização. |
-| Páginas com poucas imagens | Regra de pares de verticais consecutivas | Reordene para colocar verticais lado a lado. |
+- PDF gerado a partir de imagens é composto por imagens JPEG e não mantém texto selecionável.
+- A página é fixada em A4, em retrato.
+- O layout da criação de PDF limita o máximo de duas linhas por página.
+- Formatos que o navegador não consegue decodificar, como HEIC em alguns navegadores, podem ser rejeitados.
+- PDFs protegidos por senha, com formulários, anotações ou revisões incrementais podem ser bloqueados pela operação de divisão ou otimização.
+- PDFs extremamente grandes ou com muitas páginas aumentam o uso de memória e o tempo de processamento.
 
 ## Estrutura do projeto
 
-```
+```text
 .
-├── index.html                      # aplicação completa (HTML, CSS e JavaScript)
-├── README.md                       # este documento
-└── LICENSE                         # licença MIT
+├── index.html   # aplicação completa (HTML, CSS e JavaScript)
+├── README.md    # documentação do projeto
+└── LICENSE      # licença MIT
 ```
 
 ## Histórico de versões
 
-| Versão | Mudanças |
+| Versão | Mudanças principais |
 |---|---|
-| 1.5.0 | Janela de progresso na geração do PDF (barra, tentativas, tempo decorrido e cancelamento), com bloqueio da tela durante o processamento. |
-| 1.4.0 | Confirmação antes de salvar: se o PDF gerado exceder o limite, o app mostra tamanho original, tamanho do PDF e excedente, e só baixa se o usuário confirmar. |
-| 1.3.1 | Correção: soltar uma imagem já anexada fora de um card não a adiciona mais como nova imagem (cópia). |
-| 1.3.0 | Janela de ajuda (pop-up) com orientações de uso, tamanho do PDF e nome do arquivo. |
-| 1.2.0 | Revisão visual: área de trabalho em duas colunas, pré-visualização fixa, medidor de tamanho, destaque cruzado entre lista e páginas e divisórias de página. |
-| 1.1.0 | Ordem preservada na paginação, geração do PDF pelo próprio app com tamanho exato, ajuste automático ao limite, miniaturas leves, fila de leitura e política de segurança de conteúdo. |
-| Inicial | Organização das imagens e geração do PDF pela impressão do navegador. |
+| 1.9.0 | Novo módulo de otimização de PDF, meta de tamanho, piso de leitura, comparação antes/depois, avisos padronizados e melhor experiência visual. |
+| 1.8.x | Ajustes de acessibilidade, responsividade e downloads. |
+| 1.7.0 | Novo layout com cabeçalho, menu, título da página e cartões. |
+| 1.6.0 | Divisão de PDF grande em partes sem recompressão, com limite de anexos. |
+| 1.5.0 | Janela de progresso na geração do PDF, com barra, tentativas e cancelamento. |
+| 1.4.0 | Confirmação antes de salvar PDF acima do limite. |
+| 1.3.1 | Correção para evitar cópias de imagens ao arrastar itens já anexados. |
+| 1.3.0 | Janela de ajuda e orientações para uso. |
+| 1.2.0 | Revisão visual da área de trabalho e pré-visualização. |
+| 1.1.0 | Ordem preservada, geração interna do PDF, ajuste automático ao limite e miniaturas leves. |
+| Inicial | Organização de imagens e geração de PDF pela impressão do navegador. |
 
 ## Licença
 
 Este projeto é distribuído sob a licença [MIT](LICENSE).
+
+## Observações finais
+
+O OptimizerPDF foi construído para ser simples, local e útil em trabalho diário. O objetivo principal é permitir que o usuário resolva a maior parte dos casos sem sair do navegador, preservando o controle do arquivo final e evitando dependência de serviços externos.
