@@ -1,8 +1,8 @@
 <!--
 Projeto: OptimizerPDF
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
-Finalidade: organização de imagens e geração, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
-Versão: 1.9.1 (nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
+Finalidade: organização de imagens e geração, junção, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
+Versão: 1.10.0 (novo módulo Juntar PDFs: une vários PDFs em um só, na ordem escolhida, copiando as páginas sem recompressão; versão anterior 1.9.1: nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -275,6 +275,9 @@ html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wra
 .callout.warn{background:#FFF4E0;border-color:#E8C98F}.callout.warn::before{content:"!";background:var(--warn)}
 .callout.err{background:#FDECEA;border-color:#F0B8B2}.callout.err::before{content:"!";background:var(--danger)}
 #optTarget[aria-invalid="true"]{border-color:var(--danger);outline-color:var(--danger)}
+.part.mrg{grid-template-columns:minmax(0,1fr) auto}
+.part.mrg .acts{display:flex;align-items:center;gap:6px}
+.part.mrg .ph strong{overflow-wrap:anywhere}
 </style>
 </head>
 <body><a class="skip" href="#workspace">Ir para a área de trabalho</a>
@@ -284,6 +287,7 @@ html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wra
 <div class="head"><div class="crumb"><button class="back hidden" id="back" type="button">← Ferramentas</button></div><h1 id="brand" class="sr-only"></h1><p class="lead" id="lead"></p></div>
 <section class="home" id="home">
 <button class="tool" id="cardImg" type="button"><strong>Criar novo PDF</strong><span>Organize imagens e gere um PDF. Se a compressão não atingir o limite, o download depende da sua autorização explícita.</span><i class="chev">›</i></button>
+<button class="tool" id="cardMrg" type="button"><strong>Juntar PDFs</strong><span>Una vários PDFs em um só, na ordem que você escolher. As páginas são copiadas como estão, sem recompressão e sem alterar o conteúdo.</span><i class="chev">›</i></button>
 <button class="tool" id="cardPdf" type="button"><strong>Dividir PDF existente</strong><span>Confira o tamanho real das partes. Recursos não preserváveis bloqueiam a divisão; originais que já cabem são mantidos intactos.</span><i class="chev">›</i></button>
 <button class="tool" id="cardOpt" type="button"><strong>Otimizar PDF</strong><span>Reduza o tamanho de um PDF existente sem prejudicar a leitura dos prints. O resultado é um arquivo novo; o original permanece intacto.</span><i class="chev">›</i></button>
 </section>
@@ -376,9 +380,30 @@ páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</spa
 <button class="primary" id="optSave" type="button" disabled>Baixar PDF otimizado</button>
 </aside>
 </section>
+<section class="zone hidden" id="mrgZone">
+<h2>Selecione os PDFs</h2>
+<p class="muted">Arraste os PDFs para a página ou escolha os arquivos no computador.</p>
+<input id="mgInput" type="file" accept=".pdf,application/pdf" multiple class="hidden" />
+<button class="primary" id="mgSelect" type="button">Selecionar PDFs</button>
+<p class="muted">Os PDFs permanecem neste computador e não são enviados a nenhum servidor. As páginas são copiadas sem recompressão; recursos que não podem ser preservados bloqueiam a junção em vez de serem removidos.</p>
+</section>
+<section class="work hidden" id="mrgPanel">
+<div>
+<div class="bar"><p><strong id="mgCount"></strong> · <span id="mgSize"></span></p><div><button class="sec" id="mgAdd" type="button">Adicionar mais</button> <button class="danger" id="mgClear" type="button">Limpar tudo</button></div></div>
+<p class="muted">Use os botões ↑ e ↓ para definir a ordem. A ordem da lista é a ordem das páginas no PDF final.</p>
+<div id="mgList"></div>
+</div>
+<aside class="side">
+<h3>Junção</h3>
+<p class="muted">O PDF final reúne todas as páginas, na ordem da lista, sem recompressão das imagens.</p>
+<p class="muted" id="mgSummary"></p>
+<div class="callout"><strong>Conteúdo preservado</strong><span>Texto, imagens e layout das páginas não são alterados. O título e o autor dos documentos de origem não são copiados.</span></div>
+<button class="primary" id="mgRun" type="button" disabled>Juntar e baixar PDF</button>
+</aside>
+</section>
 <section id="historySection" class="hist hidden" aria-label="Histórico de downloads">
 <dl class="hstats"><div><dt>Solicitações nesta sessão</dt><dd id="histTotal">0</dd></div><div><dt>Tamanho somado da lista</dt><dd id="histSize">–</dd></div><div><dt>Última solicitação</dt><dd id="histLast">–</dd></div></dl>
-<div class="hbar"><span><label for="histFilter">Origem</label><select id="histFilter"><option value="all">Todas</option><option value="Criar PDF">Criar PDF</option><option value="Dividir PDF">Dividir PDF</option><option value="Otimizar PDF">Otimizar PDF</option></select></span><button id="clearDownloads" class="danger" type="button">Limpar histórico</button></div>
+<div class="hbar"><span><label for="histFilter">Origem</label><select id="histFilter"><option value="all">Todas</option><option value="Criar PDF">Criar PDF</option><option value="Juntar PDFs">Juntar PDFs</option><option value="Dividir PDF">Dividir PDF</option><option value="Otimizar PDF">Otimizar PDF</option></select></span><button id="clearDownloads" class="danger" type="button">Limpar histórico</button></div>
 <div class="hwrap" id="histWrap" role="region" aria-label="Lista de downloads solicitados" tabindex="0"><table class="htable"><caption class="sr-only">Downloads solicitados ao navegador nesta sessão, do mais recente para o mais antigo</caption><thead><tr><th scope="col" class="num">Nº</th><th scope="col">Arquivo</th><th scope="col">Origem</th><th scope="col" class="num">Tamanho</th><th scope="col">Solicitado em</th><th scope="col">Situação</th></tr></thead><tbody id="downloadList"></tbody></table></div>
 <p class="hempty muted hidden" id="histEmpty"></p>
 <p class="muted" id="downloadCount"></p>
@@ -403,6 +428,13 @@ páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</spa
 <li>O limite padrão é de 2 MB e pode ser alterado no campo <b>Limite (MB)</b>. Os tamanhos seguem o padrão do Explorador de Arquivos do Windows.</li>
 <li>Para caber no limite, o app reduz a resolução e a qualidade das imagens em etapas. Textos muito pequenos podem perder nitidez; abra o PDF e confira antes de enviar.</li>
 <li>Se mesmo na menor qualidade o PDF passar do limite, o app pergunta se você quer baixar assim mesmo. Sem a sua autorização, nada é baixado.</li>
+</ul>
+<h3>Juntar PDFs</h3>
+<ul>
+<li>Escolha <b>Juntar PDFs</b>, selecione 2 ou mais arquivos (ou solte-os na página) e organize a ordem com ↑ ↓.</li>
+<li>O PDF final reúne todas as páginas, na ordem da lista. As páginas são copiadas como estão, sem recompressão: a qualidade e o layout não mudam.</li>
+<li>PDFs protegidos por senha, ou com formulários, anotações ou revisões incrementais, são bloqueados e o aplicativo informa o motivo. O título e o autor dos originais não são copiados.</li>
+<li>O nome padrão do arquivo é <code>PDFJuntado__AAAA-MM-DD.pdf</code>. Se o resultado ficar grande, use o Dividir PDF ou o Otimizar PDF.</li>
 </ul>
 <h3>Dividir um PDF existente</h3>
 <ul>
@@ -538,7 +570,7 @@ async function decodedStream(o,u8,columns) {
 }
 const unsupportedNames={"/Annots":"anotações, links ou carimbos","/AcroForm":"formulários","/Outlines":"marcadores","/StructTreeRoot":"estrutura de acessibilidade","/MarkInfo":"marcação estrutural","/Metadata":"metadados de catálogo","/Names":"nomes, destinos ou anexos","/PageLabels":"rótulos de páginas","/OpenAction":"ações do documento","/Perms":"permissões ou assinaturas","/ID":"identificadores documentais"};
 function guardKeys(d,allowed,where) {for(const k of Object.keys(d))if(!allowed.includes(k))pdfFail(`Divisão bloqueada para preservar ${unsupportedNames[k]||k} (${where}). Este recurso ainda não é reescrito por esta versão. O original permanece intacto.`);}
-async function pdfOpen(u8) {
+async function pdfOpen(u8,opts={}) {
  inputGuard(u8.length);
  const T=b2s(u8),header=/^%PDF-(\d\.\d)/.exec(T);if(!header)pdfFail("Cabeçalho PDF não suportado.");
  const X=new Map(),cache=new Map(),streams=new Map(),loading=new Set();
@@ -558,12 +590,12 @@ async function pdfOpen(u8) {
  if(!dict(td)||!td["/Root"])pdfFail("Catálogo não encontrado.");
  if(td["/Encrypt"]!==undefined)pdfFail("PDF protegido: divisão não suportada. O original não foi alterado.");
  if(td["/Prev"]!==undefined||td["/XRefStm"]!==undefined)pdfFail("Divisão bloqueada: revisões incrementais ou xref híbrida ainda não são preservadas com segurança.");
- guardKeys(td,["/Size","/Root","/Info","/Type","/W","/Index","/Length","/Filter","/DecodeParms"],"trailer");
+ guardKeys(td,["/Size","/Root","/Info","/Type","/W","/Index","/Length","/Filter","/DecodeParms",...(opts.mergeIds?["/ID"]:[])],"trailer");
  const lenOf=(ref)=>{const x=X.get(ref.r);if(!x||x.t!==1||x.g!==(ref.g||0))return null;const o=objAt(T,x.off,null);return o.n===ref.r&&o.g===x.g&&typeof o.v==="number"?o.v:null;};
  async function get(ref) {
   if(ref===null||typeof ref!=="number"&&(!ref||!Number.isSafeInteger(ref.r)))pdfFail("Referência inválida.");
   const n=typeof ref==="number"?ref:ref.r,x=X.get(n);if(!x||x.t===0)pdfFail("Dependência ausente no PDF; divisão bloqueada.");if(typeof ref!=="number"&&(ref.g||0)!==x.g)pdfFail("Geração de referência inconsistente.");if(cache.has(n))return cache.get(n);if(loading.has(n))pdfFail("Dependência circular de object stream.");loading.add(n);let o;
-  try {if(x.t===1){const a=objAt(T,x.off,lenOf);if(a.n!==n||a.g!==x.g)pdfFail("Xref aponta para objeto diferente.");o={...a,raw:u8.subarray(x.off,a.end)};}
+  try {if(x.t===1){const a=objAt(T,x.off,lenOf);if(a.n!==n||a.g!==x.g)pdfFail("Xref aponta para objeto diferente.");o={...a,off:x.off,raw:u8.subarray(x.off,a.end)};}
    else {let z=streams.get(x.stm);if(!z){const parent=await get(x.stm);if(parent.v["/Type"]!=="/ObjStm")pdfFail("Object stream inválido.");const d=await decodedStream(parent,u8),text=b2s(d),first=parent.v["/First"],count=parent.v["/N"];if(count>POLICY.objects)taskFail("RESOURCE_LIMIT","Object stream excede 100000 objetos.");if(!Number.isInteger(first)||first<0||first>text.length||!Number.isInteger(count)||count<0)pdfFail("Cabeçalho de object stream inválido.");const nums=text.slice(0,first).trim().split(/\s+/).map(Number);if(nums.length!==count*2||nums.some(v=>!Number.isSafeInteger(v)||v<0))pdfFail("Índice de object stream inválido.");z={text,first,nums};streams.set(x.stm,z);}const k=x.idx*2;if(z.nums[k]!==n)pdfFail("Objeto comprimido inconsistente.");const start=z.first+z.nums[k+1],end=k+3<z.nums.length?z.first+z.nums[k+3]:z.text.length;if(start<z.first||end<start||end>z.text.length)pdfFail("Objeto comprimido truncado.");const text=z.text.slice(start,end),[v,j]=pv(text,0);if(pdfSpace(text,j)!==text.length)pdfFail("Conteúdo excedente em objeto comprimido.");o={n,g:0,v,raw:s2b(`${n} 0 obj\n${text}\nendobj`)};}
    cache.set(n,o);return o;
   } finally {loading.delete(n);}
@@ -791,7 +823,47 @@ async function optRun(data){
   scale:OPT_STEPS[chosen.k][0],quality:Math.max(OPT_STEPS[chosen.k][1],OPT_FLOOR.quality),pdf:out,preview:pv,
   pages:pages.map(ids=>({before:ids.reduce((n,i)=>n+images.get(i).bytes,0),after:ids.reduce((n,i)=>n+size(i),0)}))};
 }
-self.onmessage=async(event)=>{const {kind,data}=event.data;try{budget.tokens=0;budget.expanded=0;budget.links=0;let result;if(kind==="pdf")result=await processPdf(data);else if(kind==="prepare")result=await prepareImages(data.files,data.existingPixels,data.existing||[]);else if(kind==="generate")result=await generateImages(data);else if(kind==="optscan")result=await optScan(data);else if(kind==="optrun")result=await optRun(data);else taskFail("INTERNAL","Operação desconhecida.");const transfer=[];if(result.pdf)transfer.push(result.pdf.buffer);if(result.parts)for(const part of result.parts)transfer.push(part.bytes.buffer);self.postMessage({type:"result",result},[...new Set(transfer)]);}catch(e){self.postMessage({type:"error",code:e instanceof TaskError?e.code:"INTERNAL",message:e instanceof TaskError?e.message:"Falha interna no processamento local. Nenhuma saída foi liberada."});}};
+
+/* ---------- Juntar PDFs (módulo à parte; reaproveita o leitor conservador e copia os dados das páginas sem recompressão) ---------- */
+const MG_MAX=50;
+const mgReset=()=>{budget.tokens=0;budget.expanded=0;budget.links=0;};
+async function mergeOpen(file){inputGuard(file.size);const bytes=new Uint8Array(await file.arrayBuffer());if(!/^%PDF-\d\.\d/.test(b2s(bytes.subarray(0,16))))taskFail("INVALID_PDF","Cabeçalho PDF inválido.");let doc;mgReset();try{doc=await pdfOpen(bytes,{mergeIds:true});}catch(e){if(e instanceof TaskError)e.message=e.message.replace(/([Dd])ivisão/g,(m,c)=>c==="D"?"Junção":"junção");throw e;}return{bytes,doc};}
+async function mergeScan(data){const {doc}=await mergeOpen(data.file);return{pages:doc.pages.length,version:doc.version};}
+const mgNum=(v)=>{if(Number.isInteger(v))return String(v);let t=String(v);if(/e/i.test(t))t=v.toFixed(12).replace(/0+$/,"").replace(/\.$/,"");return t;};
+function mgSer(v,base){if(v===null||v===undefined)return"null";if(typeof v==="number")return mgNum(v);if(typeof v==="string")return v;if(Array.isArray(v))return"["+v.map(x=>mgSer(x,base)).join(" ")+"]";if(v.r!==undefined)return`${v.r+base} ${v.g||0} R`;if(v.s!==undefined)return v.s;return"<<"+Object.keys(v).map(k=>k+" "+mgSer(v[k],base)).join(" ")+">>";}
+function mgBuild(docs){
+ const chunks=[],off=new Map();let len=0;
+ const push=(d)=>{const b=typeof d==="string"?s2b(d):d;len+=b.length;outputGuard(len);chunks.push(b);};
+ const ver=docs.map(d=>d.version).reduce((m,v)=>Number(v)>Number(m)?v:m);
+ const cvs=docs.map(d=>d.catalogVersion).filter(v=>v!==undefined).map(v=>v.slice(1));
+ push(`%PDF-${ver}\n`);push(new Uint8Array([37,226,227,207,211,10]));
+ let base=0;const bases=[];for(const d of docs){bases.push(base);base+=d.maxN;}if(!Number.isSafeInteger(base+3))pdfFail("Numeração PDF fora do intervalo suportado.");
+ const pgs=base,cat=base+1,kids=[];
+ docs.forEach((doc,k)=>{const b=bases[k],all=new Set();doc.pages.forEach(p=>p.set.forEach(n=>all.add(n)));
+  for(const n of [...all].sort((x,y)=>x-y)){const o=doc.cache.get(n);if(!o)pdfFail("Objeto não carregado.");const num=n+b;if(off.has(num))pdfFail("Colisão de objetos no PDF de saída.");off.set(num,[len,o.g]);
+   push(`${num} ${o.g} obj\n${mgSer(o.v,b)}`);
+   if(o.ds>=0&&o.de>=o.ds){push("\nstream\n");push(o.raw.subarray(o.ds-o.off,o.de-o.off));push("\nendstream");}
+   push("\nendobj\n");}
+  for(const p of doc.pages){const num=p.n+b;if(off.has(num))pdfFail("Colisão de objetos no PDF de saída.");off.set(num,[len,p.g]);const tail=Object.keys(p.keep).map(key=>" "+key+" "+mgSer(p.keep[key],b)).join("");push(`${num} ${p.g} obj\n<</Type/Page/Parent ${pgs} 0 R${tail}>>\nendobj\n`);kids.push(`${num} ${p.g} R`);}
+ });
+ off.set(pgs,[len,0]);push(`${pgs} 0 obj\n<</Type/Pages/Count ${kids.length}/Kids[${kids.join(" ")}]>>\nendobj\n`);
+ const cmax=cvs.length?cvs.reduce((m,v)=>Number(v)>Number(m)?v:m):null;
+ off.set(cat,[len,0]);push(`${cat} 0 obj\n<</Type/Catalog/Pages ${pgs} 0 R${cmax?" /Version /"+cmax:""}>>\nendobj\n`);
+ const nums=[...off.keys()].sort((a,b)=>a-b),xref=len;let t="xref\n0 1\n0000000000 65535 f \n";
+ for(let i=0;i<nums.length;){let j=i;while(j+1<nums.length&&nums[j+1]===nums[j]+1)j++;t+=`${nums[i]} ${j-i+1}\n`;for(let k=i;k<=j;k++){const[o,g]=off.get(nums[k]);if(o>9999999999)pdfFail("PDF de saída excede a capacidade da tabela xref.");t+=String(o).padStart(10,"0")+" "+String(g).padStart(5,"0")+" n \n";}i=j+1;}
+ push(t+`trailer\n<</Size ${cat+1}/Root ${cat} 0 R>>\nstartxref\n${xref}\n%%EOF\n`);
+ const out=new Uint8Array(len);let cursor=0;for(const c of chunks){out.set(c,cursor);cursor+=c.length;}return out;
+}
+async function mergeRun(data){
+ const files=data.files;if(!Array.isArray(files)||files.length<2)taskFail("INVALID_INPUT","Selecione pelo menos 2 PDFs para juntar.");if(files.length>MG_MAX)taskFail("RESOURCE_LIMIT",`Seleção limitada a ${MG_MAX} PDFs.`);
+ inputGuard(files.reduce((n,f)=>n+f.size,0));const docs=[];let pages=0;
+ for(let i=0;i<files.length;i++){workerProgress({stage:"merge",text:`lendo ${files[i].name} (${i+1} de ${files.length})…`});try{const {doc}=await mergeOpen(files[i]);docs.push(doc);pages+=doc.pages.length;}catch(e){if(e instanceof TaskError)e.message=`${files[i].name}: ${e.message}`;throw e;}}
+ workerProgress({stage:"merge",text:"montando o PDF final…"});const pdf=mgBuild(docs);
+ workerProgress({stage:"merge",text:"conferindo o resultado…"});mgReset();const check=await pdfOpen(pdf);
+ if(check.pages.length!==pages)taskFail("INTERNAL","A conferência do PDF final falhou; nenhuma saída foi liberada.");
+ return{pdf,size:pdf.length,pages};
+}
+self.onmessage=async(event)=>{const {kind,data}=event.data;try{budget.tokens=0;budget.expanded=0;budget.links=0;let result;if(kind==="pdf")result=await processPdf(data);else if(kind==="prepare")result=await prepareImages(data.files,data.existingPixels,data.existing||[]);else if(kind==="generate")result=await generateImages(data);else if(kind==="optscan")result=await optScan(data);else if(kind==="optrun")result=await optRun(data);else if(kind==="mergescan")result=await mergeScan(data);else if(kind==="mergerun")result=await mergeRun(data);else taskFail("INTERNAL","Operação desconhecida.");const transfer=[];if(result.pdf)transfer.push(result.pdf.buffer);if(result.parts)for(const part of result.parts)transfer.push(part.bytes.buffer);self.postMessage({type:"result",result},[...new Set(transfer)]);}catch(e){self.postMessage({type:"error",code:e instanceof TaskError?e.code:"INTERNAL",message:e instanceof TaskError?e.message:"Falha interna no processamento local. Nenhuma saída foi liberada."});}};
 
 
 </script>
@@ -903,7 +975,7 @@ function loadProgress(m){
 
 /* Uma operação ativa; o token identifica a seleção/configuração imutáveis. */
 let activeOperation=null,operationSequence=0,imageRevision=0,downloadInProgress=false,loadState=null;
-const labels={"duplicates":"Decidindo sobre imagens repetidas","loading-images":"Lendo imagens","loading-pdf":"Lendo novo PDF","planning":"Analisando PDF","generating":"Gerando PDF","confirming":"Aguardando decisão sobre excesso","downloading":"Solicitando downloads","optimizing":"Otimizando PDF"};
+const labels={"duplicates":"Decidindo sobre imagens repetidas","loading-images":"Lendo imagens","loading-pdf":"Lendo novo PDF","planning":"Analisando PDF","generating":"Gerando PDF","confirming":"Aguardando decisão sobre excesso","downloading":"Solicitando downloads","optimizing":"Otimizando PDF","merging":"Juntando PDFs"};
 /* Tamanhos na interface sempre em MB (1 MB = 1.048.576 bytes, o mesmo critério do Explorador de Arquivos do Windows).
    dir "up"/"down" arredonda para cima/baixo, para que um arquivo acima do limite nunca apareça como "igual ao limite". */
 function fmtMB(n,dir){const v=Number(n)/1048576,k=dir==="up"?Math.ceil(v*100-1e-9)/100:dir==="down"?Math.floor(v*100+1e-9)/100:Math.round(v*100)/100;const t=k.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});return Number(n)>0&&t==="0,00"?"menos de 0,01 MB":t+" MB";}
@@ -924,7 +996,7 @@ function syncOperationControls(){
  document.querySelectorAll("#spParts button").forEach(b=>b.disabled=locked||!splitPlan||!!splitPlan.overPages.length);
  document.querySelectorAll("#grid button").forEach(b=>b.disabled=locked);
  document.querySelectorAll("#grid .card").forEach(c=>c.draggable=!locked);
- $("clearDownloads").disabled=locked;optRefresh();$("clearBtn").disabled=locked||!items.length; if(locked)genBtn.disabled=true;
+ $("clearDownloads").disabled=locked;optRefresh();$("clearBtn").disabled=locked||!items.length; if(locked)genBtn.disabled=true; mgSync();
 }
 function beginOperation(stage,label="",snapshot=null){if(activeOperation)throw new TaskError("BUSY","Já existe uma operação em andamento.");const op={id:++operationSequence,stage,label,snapshot,returnFocus:focusToken(),cancelled:false,cancelHandlers:new Set()};activeOperation=op;syncOperationControls();if(!modalState)opCancelButton().focus();return op;}
 function operationStage(op,stage){ensureCurrent(op);op.stage=stage;syncOperationControls();}
@@ -1108,7 +1180,7 @@ if (dragFrom !== null) { dragFrom = null; return; } // soltura de uma imagem já
 routeFiles(e.dataTransfer && e.dataTransfer.files);
 });
 // Sem persistência: encerrar libera referências, não apaga originais nem certifica limpeza forense.
-window.addEventListener('pagehide', () => {if(activeOperation)cancelOperation(); items.forEach((i) => { revoke(i.url); revoke(i.thumb); }); items.length=0;downloadRequests=[];downloadSequence=0;});
+window.addEventListener('pagehide', () => {mgItems=[];if(activeOperation)cancelOperation(); items.forEach((i) => { revoke(i.url); revoke(i.thumb); }); items.length=0;downloadRequests=[];downloadSequence=0;});
 /* ---------- janela de ajuda ---------- */
 const HELP_AUTO_OPEN = true; // false: abre só pelo botão "Como usar"
 const help = $('help');
@@ -1178,14 +1250,16 @@ function renderDownloadRequests(){
  empty.textContent=downloadRequests.length?"Nenhuma solicitação para este filtro.":"Nenhum download solicitado nesta sessão. Quando você gerar ou baixar um PDF, ele aparecerá aqui.";
  $("clearDownloads").disabled=!!activeOperation||!downloadRequests.length;
 }
-function recordDownloadRequest(name,bytes){downloadSequence++;downloadRequests.push({seq:downloadSequence,name,bytes,kind:({pdf:"Dividir PDF",opt:"Otimizar PDF"})[mode]||"Criar PDF",at:new Date()});if(downloadRequests.length>50)downloadRequests.shift();renderDownloadRequests();}
+function recordDownloadRequest(name,bytes){downloadSequence++;downloadRequests.push({seq:downloadSequence,name,bytes,kind:({pdf:"Dividir PDF",opt:"Otimizar PDF",mrg:"Juntar PDFs"})[mode]||"Criar PDF",at:new Date()});if(downloadRequests.length>50)downloadRequests.shift();renderDownloadRequests();}
 function clearDownloadRequests(){if(denyMutation())return;if(!downloadRequests.length)return;if(!window.confirm("Limpar o histórico desta sessão? Os arquivos já baixados não serão excluídos."))return;downloadRequests=[];downloadSequence=0;renderDownloadRequests();msg("Histórico limpo. Nenhum arquivo salvo no computador foi excluído.");restoreFocus({id:"historyBtn"});}
 function saveBytes(bytes,name){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));try{a.href=url;a.download=name;document.body.append(a);a.click();recordDownloadRequest(name,bytes.length);}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}}
 
 /* ---------- modo "Dividir um PDF grande": interface ---------- */
+let mgItems = [], mgSeq = 0;
 let mode = 'home', spDoc = null, spParts = [], optDoc = null, optScanRes = null, optOut = null, optRes = null;
 const SCREENS = {
-home: ['Ferramentas', 'Encontre aqui as ferramentas necessárias para geração, divisão ou otimização de PDFs.'],
+home: ['Ferramentas', 'Encontre aqui as ferramentas necessárias para geração, junção, divisão ou otimização de PDFs.'],
+mrg: ['Juntar PDFs', 'Una vários PDFs em um só, na ordem que você escolher. As páginas são copiadas sem recompressão e os originais nunca são alterados.'],
 opt: ['Otimizar PDF', 'Reduza o tamanho de um PDF existente preservando a leitura dos prints. O original nunca é alterado.'],
 img: ['Criar novo PDF', 'Organize os prints na ordem correta e gere um PDF dentro do limite de tamanho definido.'],
 history: ['Histórico de downloads', 'Veja os downloads solicitados ao navegador nesta sessão.'],
@@ -1265,7 +1339,7 @@ async function downloadAllSplitParts(){if(denyMutation())return;let op;let sent=
  msg(`${sent} download(s) solicitado(s). Confira os arquivos salvos; o navegador pode bloquear downloads múltiplos.`);
  }catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}}
 function clearSplitPdf(){if(denyMutation())return;if(spDoc&&!window.confirm("Descartar a seleção de PDF e o plano atual? O arquivo no computador não será excluído."))return;spDoc=null;++splitRevision;resetSplitOutput();msg("");setMode("pdf");}
-function routeFiles(list){if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}const fs=Array.from(list||[]);if(!fs.length)return;const pdfs=fs.filter(f=>f.type==="application/pdf"||/\.pdf$/i.test(f.name));if(pdfs.length&&(pdfs.length!==1||fs.length!==1)){msg("Selecione exatamente 1 PDF por vez, sem misturar imagens. Nenhum arquivo da seleção foi importado.",true);return;}if(pdfs.length){if(mode==="opt")loadOpt(pdfs[0]);else loadPdf(pdfs[0]);return;}if(denyMutation())return;setMode("img");addFiles(fs);}
+function routeFiles(list){if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}const fs=Array.from(list||[]);if(!fs.length)return;const pdfs=fs.filter(f=>f.type==="application/pdf"||/\.pdf$/i.test(f.name));if(mode==="mrg"){if(!pdfs.length||pdfs.length!==fs.length){msg("Nesta ferramenta selecione somente PDFs. Nenhum arquivo da seleção foi importado.",true);return;}addMergePdfs(fs);return;}if(pdfs.length&&(pdfs.length!==1||fs.length!==1)){msg("Selecione exatamente 1 PDF por vez, sem misturar imagens. Nenhum arquivo da seleção foi importado.",true);return;}if(pdfs.length){if(mode==="opt")loadOpt(pdfs[0]);else loadPdf(pdfs[0]);return;}if(denyMutation())return;setMode("img");addFiles(fs);}
 
 /* ---------- módulo "Otimizar PDF": interface (o processamento roda no worker; Criar e Dividir não são afetados) ---------- */
 let optUrls=[],cmpSync=false;
@@ -1358,6 +1432,71 @@ function saveOpt(){
  catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}
 }
 function clearOpt(){if(denyMutation())return;optDoc=null;optScanRes=null;optOut=null;optRes=null;$("optRows").replaceChildren();showOptResult();$("optNote").textContent="";optTargetNote();setMode("opt",true);msg("");restoreFocus({id:"optBtn"});}
+/* ---------- módulo "Juntar PDFs": interface (o processamento roda no worker; os demais módulos não são afetados) ---------- */
+const MG_MAX=50;
+const mgTotal=()=>mgItems.reduce((n,i)=>n+i.size,0),mgPages=()=>mgItems.reduce((n,i)=>n+i.pages,0);
+const pgWord=n=>n===1?"página":"páginas";
+function mgSync(){
+ const locked=!!activeOperation,has=mgItems.length>0;
+ $("mrgZone").classList.toggle("hidden",mode!=="mrg"||has||isImporting());
+ $("mrgPanel").classList.toggle("hidden",mode!=="mrg"||!has);
+ $("cardMrg").disabled=locked;$("mgSelect").disabled=locked;$("mgInput").disabled=locked;$("mgAdd").disabled=locked;$("mgClear").disabled=locked||!has;
+ $("mgRun").disabled=locked||mgItems.length<2;
+ document.querySelectorAll("#mgList button").forEach(b=>{b.disabled=locked;});
+}
+function mgRender(){
+ $("mgCount").textContent=`${mgItems.length} ${mgItems.length===1?"PDF selecionado":"PDFs selecionados"}`;
+ $("mgSize").textContent=`${mgPages()} ${pgWord(mgPages())} · somados: ${fmtMB(mgTotal())}`;
+ $("mgSummary").textContent=mgItems.length<2?"Adicione pelo menos 2 PDFs para juntar.":`Resultado: ${mgItems.length} arquivos em 1 PDF com ${mgPages()} ${pgWord(mgPages())}, com cerca de ${fmtMB(mgTotal())}.`;
+ $("mgList").replaceChildren(...mgItems.map((it,i)=>{
+  const row=el("div","part mrg"),head=el("div","ph"),acts=el("div","acts");
+  head.append(el("strong","",`${i+1}. ${it.name}`),el("span","muted",`${it.pages} ${pgWord(it.pages)} · ${fmtMB(it.size)}`));
+  const up=btn("↑",`Mover ${it.name} para cima`,()=>mgMove(it,-1,"up"));up.dataset.focusKey=it.id+":up";up.setAttribute("aria-disabled",String(i===0));
+  const down=btn("↓",`Mover ${it.name} para baixo`,()=>mgMove(it,1,"down"));down.dataset.focusKey=it.id+":down";down.setAttribute("aria-disabled",String(i===mgItems.length-1));
+  const rm=btn("×",`Remover ${it.name}`,()=>mgRemove(it),"rm");rm.dataset.focusKey=it.id+":remove";
+  acts.append(up,down,rm);row.append(head,acts);return row;}));
+ mgSync();
+}
+function mgMove(it,d,action){if(denyMutation())return;const from=mgItems.indexOf(it),to=from+d;if(from<0)return;
+ if(to<0||to>=mgItems.length){msg(`${it.name}: já está no limite desta direção.`);restoreFocus({key:it.id+":"+action});return;}
+ mgItems.splice(to,0,mgItems.splice(from,1)[0]);mgRender();restoreFocus({key:it.id+":"+action});msg(`${it.name}: movido para a posição ${to+1} de ${mgItems.length}.`);}
+function mgRemove(it){if(denyMutation())return;const i=mgItems.indexOf(it);if(i<0)return;mgItems.splice(i,1);mgRender();
+ if(mgItems.length)restoreFocus({key:mgItems[Math.min(i,mgItems.length-1)].id+":remove"});else $("mgSelect").focus();
+ msg(`${it.name}: removido. ${mgItems.length} PDF(s) na seleção.`);}
+function mgClearAll(){if(denyMutation())return;if(!mgItems.length)return;if(!window.confirm("Remover todos os PDFs da seleção? Os arquivos no computador não serão excluídos."))return;mgItems=[];mgRender();msg("");$("mgSelect").focus();}
+async function addMergePdfs(list){
+ if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}
+ if(denyMutation())return;const files=Array.from(list||[]);if(!files.length)return;let op;
+ try{
+  if(files.some(f=>!(f.type==="application/pdf"||/\.pdf$/i.test(f.name))))throw new TaskError("INVALID_INPUT","Selecione somente arquivos PDF. Nenhum arquivo deste lote foi adicionado.");
+  if(mgItems.length+files.length>MG_MAX)throw new TaskError("RESOURCE_LIMIT",`Seleção limitada a ${MG_MAX} PDFs.`);
+  inputGuard(mgTotal()+files.reduce((n,f)=>n+f.size,0));
+  op=beginOperation("loading-pdf",`${files.length} arquivo(s)`);loadOpenPdf(files[0].name);setMode("mrg",true);
+  const added=[];
+  for(let i=0;i<files.length;i++){const file=files[i];$("loadLine").textContent=`${file.name} · lendo ${i+1} de ${files.length}…`;
+   let r;try{r=await workerJob(op,"mergescan",{file});}catch(err){if(err instanceof TaskError&&err.code!=="CANCELLED")err.message=`${file.name}: ${err.message} Nenhum arquivo deste lote foi adicionado.`;throw err;}
+   ensureCurrent(op);added.push({id:`${op.id}-${i}-${Date.now()}`,file,name:file.name,size:file.size,pages:r.pages});}
+  ensureCurrent(op);mgItems.push(...added);mgSeq++;
+  msg(`${added.length} PDF(s) adicionado(s). ${mgItems.length} na seleção, com ${mgPages()} ${pgWord(mgPages())} no total.`);
+ }catch(e){if(!op||operationCurrent(op))showOperationError(op,e);}
+ finally{if(op)endOperation(op);mgRender();}
+}
+async function mgRunMerge(){
+ if(denyMutation())return;if(mgItems.length<2){msg("Adicione pelo menos 2 PDFs para juntar.",true);return;}
+ const batch=mgItems.slice(),expected=mgPages(),op=beginOperation("merging",`${batch.length} arquivos`);
+ try{
+  const result=await workerJob(op,"mergerun",{files:batch.map(i=>i.file)},m=>{$("operationText").textContent="Juntando PDFs · "+m.text;});ensureCurrent(op);
+  if(batch.length!==mgItems.length||batch.some((b,i)=>b!==mgItems[i]))throw new TaskError("CANCELLED","A seleção mudou durante a junção; resultado descartado.");
+  if(result.pages!==expected)throw new TaskError("INTERNAL","Falha de conferência: a contagem de páginas não confere; nenhum download foi solicitado.");
+  const name=`PDFJuntado__${new Date().toLocaleDateString("sv-SE")}.pdf`;safeSave(op,result.pdf,name);
+  msg(`Download solicitado: ${name} · ${fmtMB(result.pdf.length)} · ${result.pages} ${pgWord(result.pages)}. Confira no navegador; gravação não confirmada.`);
+ }catch(e){if(operationCurrent(op))showOperationError(op,e);}
+ finally{endOperation(op);}
+}
+$("cardMrg").onclick=()=>setMode("mrg");
+$("mgSelect").onclick=$("mgAdd").onclick=()=>{if(!activeOperation)$("mgInput").click();else denyMutation();};
+$("mgInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};
+$("mgClear").onclick=mgClearAll;$("mgRun").onclick=mgRunMerge;
 $("cardOpt").onclick=()=>setMode("opt");
 $("optBtn").onclick=()=>{if(!activeOperation)$("optInput").click();else denyMutation();};
 $("optInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};

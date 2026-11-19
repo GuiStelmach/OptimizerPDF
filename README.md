@@ -7,11 +7,11 @@
 
 # OptimizerPDF
 
-Aplicação web offline para organizar imagens, dividir PDFs e reduzir o tamanho de documentos PDF sem depender de serviços externos.
+Aplicação web offline para organizar imagens, juntar e dividir PDFs e reduzir o tamanho de documentos PDF sem depender de serviços externos.
 
 Teste online: [abrir no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
 
-Versão atual: 1.9.1
+Versão atual: 1.10.0  
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 
 ---
@@ -28,11 +28,12 @@ Além disso, a decisão de desenvolver toda a solução em um único arquivo HTM
 
 Hoje, o projeto representa uma solução real para um problema de produtividade e automação de processos internos, demonstrando uma abordagem orientada a resolver desafios concretos com tecnologia simples, eficiente e segura.
 
-O app roda 100% no navegador e trabalha com três fluxos principais:
+O app roda 100% no navegador e trabalha com quatro fluxos principais:
 
 1. Criar um novo PDF a partir de imagens;
-2. Dividir um PDF existente em partes dentro de um limite;
-3. Otimizar um PDF existente para atingir uma meta de tamanho.
+2. Juntar vários PDFs em um único PDF, na ordem escolhida;
+3. Dividir um PDF existente em partes dentro de um limite;
+4. Otimizar um PDF existente para atingir uma meta de tamanho.
 
 O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem dependências externas nem envio de dados a servidores.
 
@@ -44,6 +45,7 @@ O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem 
 - Geração interna de PDF sem usar `window.print()` ou impressora virtual.
 - Ajuste automático de qualidade e resolução para respeitar um limite em MB.
 - Confirmação explícita antes de baixar um PDF acima do limite.
+- União de vários PDFs em um único arquivo, com ordem definida pelo usuário e sem recompressão: texto, imagens e layout das páginas são copiados como estão.
 - Divisão de PDF existente em partes com limite por parte e máximo de anexos.
 - Preservação do original quando o arquivo já cabe no limite.
 - Otimização de PDFs existentes com comparação antes/depois e meta de tamanho.
@@ -83,7 +85,18 @@ Formatos aceitos em imagens: JPG, PNG, WebP, GIF, BMP e AVIF.
 
 Nome padrão do arquivo de saída: `PDFGerado__AAAA-MM-DD.pdf`.
 
-### 2) Dividir um PDF existente
+### 2) Juntar PDFs
+
+1. Clique em `Juntar PDFs`.
+2. Selecione dois ou mais arquivos PDF ou arraste-os para a página (é possível usar `Adicionar mais` depois).
+3. Defina a ordem com os botões ↑ e ↓ e remova o que não for necessário.
+4. Clique em `Juntar e baixar PDF`. O app confere a contagem de páginas e reabre o resultado antes de liberar o download.
+
+Nome padrão do arquivo de saída: `PDFJuntado__AAAA-MM-DD.pdf`.
+
+As páginas são copiadas sem recompressão, então a aparência do documento não muda. O título e o autor dos documentos de origem não são copiados. PDFs protegidos por senha, com anotações, formulários ou revisões incrementais são bloqueados com explicação, em vez de terem esses recursos removidos.
+
+### 3) Dividir um PDF existente
 
 1. Clique em `Dividir PDF existente`.
 2. Selecione o arquivo PDF.
@@ -93,7 +106,7 @@ Nome padrão do arquivo de saída: `PDFGerado__AAAA-MM-DD.pdf`.
 
 Arquivos protegidos por senha, com anotações, formulários ou recursos que não podem ser preservados podem ser bloqueados com explicação.
 
-### 3) Otimizar um PDF existente
+### 4) Otimizar um PDF existente
 
 1. Clique em `Otimizar PDF`.
 2. Selecione o arquivo PDF.
@@ -187,7 +200,8 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 - A página é fixada em A4, em retrato.
 - O layout da criação de PDF limita o máximo de duas linhas por página.
 - Formatos que o navegador não consegue decodificar, como HEIC em alguns navegadores, podem ser rejeitados.
-- PDFs protegidos por senha, com formulários, anotações ou revisões incrementais podem ser bloqueados pela operação de divisão ou otimização.
+- PDFs protegidos por senha, com formulários, anotações ou revisões incrementais podem ser bloqueados pela operação de junção, divisão ou otimização.
+- Na junção, o resultado soma os tamanhos dos arquivos de origem (não há compressão); se ficar grande, use `Dividir PDF` ou `Otimizar PDF`. A seleção é limitada a 50 PDFs.
 - PDFs extremamente grandes ou com muitas páginas aumentam o uso de memória e o tempo de processamento.
 
 ## Estrutura do projeto
@@ -204,7 +218,8 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 
 | Versão | Mudanças principais |
 |---|---|
-| 1.9.1 | Nova identidade visual com logo e favicon. |
+| 1.10.0 | Novo módulo Juntar PDFs: une vários PDFs em um só, na ordem escolhida, sem recompressão, com conferência do resultado antes do download. |
+| 1.9.1 | Nova identidade visual: logo no cabeçalho, favicon e pasta `assets/`. |
 | 1.9.0 | Novo módulo de otimização de PDF, meta de tamanho, piso de leitura, comparação antes/depois, avisos padronizados e melhor experiência visual. |
 | 1.8.x | Ajustes de acessibilidade, responsividade e downloads. |
 | 1.7.0 | Novo layout com cabeçalho, menu, título da página e cartões. |
