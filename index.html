@@ -2,7 +2,7 @@
 Projeto: OptimizerPDF
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 Finalidade: organização de imagens e geração, junção, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
-Versão: 1.10.0 (novo módulo Juntar PDFs: une vários PDFs em um só, na ordem escolhida, copiando as páginas sem recompressão; versão anterior 1.9.1: nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
+Versão: 1.11.0 (Juntar PDFs com pré-visualização das páginas e reorganização página a página por arraste; versão anterior 1.10.0: novo módulo Juntar PDFs: une vários PDFs em um só, copiando as páginas sem recompressão; versão anterior 1.9.1: nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -278,6 +278,9 @@ html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wra
 .part.mrg{grid-template-columns:minmax(0,1fr) auto}
 .part.mrg .acts{display:flex;align-items:center;gap:6px}
 .part.mrg .ph strong{overflow-wrap:anywhere}
+.thumb.pgth{aspect-ratio:3/4}
+.thumb.noprev{display:flex;align-items:center;justify-content:center;padding:8px;text-align:center;color:var(--muted);font-size:var(--fs-xs)}
+#mgGrid .card{border-top-width:3px}
 </style>
 </head>
 <body><a class="skip" href="#workspace">Ir para a área de trabalho</a>
@@ -389,15 +392,19 @@ páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</spa
 </section>
 <section class="work hidden" id="mrgPanel">
 <div>
-<div class="bar"><p><strong id="mgCount"></strong> · <span id="mgSize"></span></p><div><button class="sec" id="mgAdd" type="button">Adicionar mais</button> <button class="danger" id="mgClear" type="button">Limpar tudo</button></div></div>
-<p class="muted">Use os botões ↑ e ↓ para definir a ordem. A ordem da lista é a ordem das páginas no PDF final.</p>
+<div class="bar"><p><strong id="mgCount"></strong> · <span id="mgSize"></span></p><div><button class="sec" id="mgAdd" type="button">Adicionar mais</button> <button class="sec" id="mgReset" type="button">Restaurar ordem</button> <button class="danger" id="mgClear" type="button">Limpar tudo</button></div></div>
+<p class="muted">Arraste as páginas ou use ↑ e ↓ para reorganizar. A ordem das páginas é a ordem do PDF final. Os botões ↑ e ↓ dos arquivos movem o arquivo inteiro.</p>
+<div class="pg" style="margin-top:12px">Arquivos</div>
 <div id="mgList"></div>
+<div class="pg" style="margin-top:14px">Páginas do PDF final</div>
+<p class="muted" id="mgNote"></p>
+<div class="grid" id="mgGrid"></div>
 </div>
 <aside class="side">
 <h3>Junção</h3>
-<p class="muted">O PDF final reúne todas as páginas, na ordem da lista, sem recompressão das imagens.</p>
+<p class="muted">O PDF final reúne as páginas na ordem da pré-visualização, sem recompressão das imagens.</p>
 <p class="muted" id="mgSummary"></p>
-<div class="callout"><strong>Conteúdo preservado</strong><span>Texto, imagens e layout das páginas não são alterados. O título e o autor dos documentos de origem não são copiados.</span></div>
+<div class="callout"><strong>Conteúdo preservado</strong><span>Texto, imagens e layout das páginas não são alterados, só a ordem. A pré-visualização é aproximada; o PDF final usa as páginas originais. O título e o autor dos documentos de origem não são copiados.</span></div>
 <button class="primary" id="mgRun" type="button" disabled>Juntar e baixar PDF</button>
 </aside>
 </section>
@@ -431,8 +438,8 @@ páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</spa
 </ul>
 <h3>Juntar PDFs</h3>
 <ul>
-<li>Escolha <b>Juntar PDFs</b>, selecione 2 ou mais arquivos (ou solte-os na página) e organize a ordem com ↑ ↓.</li>
-<li>O PDF final reúne todas as páginas, na ordem da lista. As páginas são copiadas como estão, sem recompressão: a qualidade e o layout não mudam.</li>
+<li>Escolha <b>Juntar PDFs</b> e selecione 2 ou mais arquivos (ou solte-os na página). As páginas aparecem em miniaturas: arraste para reorganizar, ou use ↑ ↓ (mover uma página) e os botões da lista de arquivos (mover o arquivo inteiro).</li>
+<li>O PDF final reúne todas as páginas, na ordem das miniaturas. As páginas são copiadas como estão, sem recompressão: a qualidade e o layout não mudam. A miniatura é só uma prévia aproximada (imagens e formas aparecem; textos viram blocos cinza).</li>
 <li>PDFs protegidos por senha, ou com formulários, anotações ou revisões incrementais, são bloqueados e o aplicativo informa o motivo. O título e o autor dos originais não são copiados.</li>
 <li>O nome padrão do arquivo é <code>PDFJuntado__AAAA-MM-DD.pdf</code>. Se o resultado ficar grande, use o Dividir PDF ou o Otimizar PDF.</li>
 </ul>
@@ -828,24 +835,110 @@ async function optRun(data){
 const MG_MAX=50;
 const mgReset=()=>{budget.tokens=0;budget.expanded=0;budget.links=0;};
 async function mergeOpen(file){inputGuard(file.size);const bytes=new Uint8Array(await file.arrayBuffer());if(!/^%PDF-\d\.\d/.test(b2s(bytes.subarray(0,16))))taskFail("INVALID_PDF","Cabeçalho PDF inválido.");let doc;mgReset();try{doc=await pdfOpen(bytes,{mergeIds:true});}catch(e){if(e instanceof TaskError)e.message=e.message.replace(/([Dd])ivisão/g,(m,c)=>c==="D"?"Junção":"junção");throw e;}return{bytes,doc};}
-async function mergeScan(data){const {doc}=await mergeOpen(data.file);return{pages:doc.pages.length,version:doc.version};}
+/* Pré-visualização aproximada: desenha imagens e formas; o texto aparece como blocos cinza. Falhas viram "indisponível"; o PDF final nunca usa essas miniaturas. */
+const MG_THUMB_W=260,MG_THUMB_MAX=300;
+const mgArr=(a,n)=>Array.isArray(a)&&a.length>=n&&a.slice(0,n).every(x=>typeof x==="number"&&Number.isFinite(x))?a.slice(0,n):null;
+function mgRes(doc,v){for(let k=0;v&&typeof v==="object"&&v.r!==undefined&&k<8;k++){const o=doc.cache.get(v.r);if(!o)return undefined;v=o.v;}return v;}
+const mgClamp=x=>Math.round(Math.max(0,Math.min(1,x))*255);
+const mgRgb=(r,g,b)=>`rgb(${mgClamp(r)},${mgClamp(g)},${mgClamp(b)})`;
+function mgColor(n){if(n.length===1)return mgRgb(n[0],n[0],n[0]);if(n.length===3)return mgRgb(n[0],n[1],n[2]);if(n.length===4){const k=n[3];return mgRgb(1-Math.min(1,n[0]+k),1-Math.min(1,n[1]+k),1-Math.min(1,n[2]+k));}return null;}
+function mgStr(s){const out=[];if(s[0]==="<"){const hx=s.slice(1,-1).replace(/\s+/g,"");for(let i=0;i<hx.length;i+=2)out.push(parseInt((hx.substr(i,2)+"0").slice(0,2),16)||0);return out;}
+ const t=s.slice(1,-1);for(let i=0;i<t.length;i++){let c=t.charCodeAt(i);if(t[i]==="\\"){i++;const d=t[i];if(d===undefined)break;if(d==="\r"||d==="\n")continue;if(/[0-7]/.test(d)){let o=d;while(o.length<3&&/[0-7]/.test(t[i+1]||""))o+=t[++i];c=parseInt(o,8);}else c=({n:10,r:13,t:9,b:8,f:12})[d]??d.charCodeAt(0);}out.push(c&255);}return out;}
+function mgFont(doc,res,name){const fonts=mgRes(doc,res&&res["/Font"]),fd=fonts&&typeof fonts==="object"?mgRes(doc,fonts[name]):null;
+ if(!fd||typeof fd!=="object")return{two:false,w:()=>0.5};
+ if(fd["/Subtype"]==="/Type0"){const kids=mgRes(doc,fd["/DescendantFonts"]),df=Array.isArray(kids)?mgRes(doc,kids[0]):null;let dw=1000;const W=new Map();
+  if(df&&typeof df==="object"){if(typeof df["/DW"]==="number")dw=df["/DW"];const wa=mgRes(doc,df["/W"]);if(Array.isArray(wa)){for(let i=0;i<wa.length;){const a=wa[i],b=mgRes(doc,wa[i+1]);if(Array.isArray(b)){b.forEach((x,k)=>{if(typeof x==="number")W.set(a+k,x);});i+=2;}else{const c=wa[i+2];if(typeof c==="number")for(let k=a;k<=b&&k-a<65536;k++)W.set(k,c);i+=3;}}}}
+  return{two:true,w:c=>(W.has(c)?W.get(c):dw)/1000};}
+ const first=Number(fd["/FirstChar"])||0,ws=mgRes(doc,fd["/Widths"]),desc=mgRes(doc,fd["/FontDescriptor"]),mw=desc&&typeof desc==="object"&&typeof desc["/MissingWidth"]==="number"?desc["/MissingWidth"]:null,mono=/courier/i.test(String(fd["/BaseFont"]));
+ return{two:false,w:c=>{const x=Array.isArray(ws)?ws[c-first]:undefined;return(typeof x==="number"?x:mw!==null?mw:mono?600:500)/1000;}};}
+function mgCsKind(doc,res,nm){if(nm==="/DeviceGray"||nm==="/CalGray")return"gray";if(nm==="/DeviceRGB"||nm==="/CalRGB")return"rgb";if(nm==="/DeviceCMYK")return"cmyk";if(nm==="/Pattern")return"pattern";
+ const t=mgRes(doc,res&&res["/ColorSpace"]),a=t&&typeof t==="object"?mgRes(doc,t[nm]):null;if(typeof a==="string")return mgCsKind(doc,res,a);
+ if(Array.isArray(a)){const k=a[0];if(k==="/ICCBased"){const d=mgRes(doc,a[1]),n=d&&typeof d==="object"?d["/N"]:0;return n===1?"gray":n===3?"rgb":n===4?"cmyk":"other";}if(k==="/Separation"||k==="/DeviceN")return"tint";if(k==="/Pattern")return"pattern";if(k==="/CalRGB")return"rgb";if(k==="/CalGray")return"gray";}return"other";}
+const mgMul=(a,b)=>[a[0]*b[0]+a[1]*b[2],a[0]*b[1]+a[1]*b[3],a[2]*b[0]+a[3]*b[2],a[2]*b[1]+a[3]*b[3],a[4]*b[0]+a[5]*b[2]+b[4],a[4]*b[1]+a[5]*b[3]+b[5]];
+const MG_NUM=/[+-]?(?:\d+\.?\d*|\.\d+)/y,MG_NAME=/\/[^\x00\s()<>\[\]{}\/%]*/y;
+async function mgDraw(doc,bytes,ctx,text,res,depth,st){
+ const N=text.length,stack=[],fonts=new Map();let g={font:null,size:1,tc:0,tw:0,th:1,tl:0,rise:0,tr:0,fa:1,sa:1,fill:"#000",stroke:"#000",lw:1,fcs:"",scs:""};
+ let tm=[1,0,0,1,0,0],tlm=[1,0,0,1,0,0],clip=null,args=[],i=0,cx=0,cy=0;
+ const num=k=>typeof args[k]==="number"?args[k]:0;
+ const paint=(f,s,eo)=>{if(f){ctx.globalAlpha=g.fa;ctx.fillStyle=g.fill;ctx.fill(eo?"evenodd":"nonzero");}if(s){const m=ctx.getTransform();ctx.globalAlpha=g.sa;ctx.strokeStyle=g.stroke;ctx.lineWidth=Math.max(g.lw,0.7/(Math.hypot(m.a,m.b)||1));ctx.stroke();}if(clip){ctx.clip(clip);clip=null;}ctx.beginPath();};
+ const setCol=(stroke)=>{const kind=stroke?g.scs:g.fcs,n=args.filter(x=>typeof x==="number");let c;if(kind==="pattern"||kind==="other")c="#9a9a9a";else if(kind==="tint"&&n.length===1)c=mgRgb(1-n[0],1-n[0],1-n[0]);else c=mgColor(n);if(c){if(stroke)g.stroke=c;else g.fill=c;}};
+ const show=(codes)=>{const f=g.font||{two:false,w:()=>0.5};let x=0,run=null;
+  const flush=()=>{if(run!==null&&x>run&&g.tr!==3&&g.tr!==7){ctx.save();ctx.transform(tm[0],tm[1],tm[2],tm[3],tm[4],tm[5]);ctx.globalAlpha=g.fa*0.55;ctx.fillStyle=g.fill;ctx.fillRect(run,g.rise+g.size*0.05,x-run,g.size*0.62);ctx.restore();}run=null;};
+  const step=f.two?2:1;for(let k=0;k<codes.length;k+=step){const code=f.two?((codes[k]<<8)|(codes[k+1]||0)):codes[k],sp=!f.two&&code===32;if(sp)flush();else if(run===null)run=x;x+=(f.w(code)*g.size+g.tc+(sp?g.tw:0))*g.th;}
+  flush();tm=mgMul([1,0,0,1,x,0],tm);};
+ const nextLine=()=>{tlm=mgMul([1,0,0,1,0,-g.tl],tlm);tm=tlm.slice();};
+ async function image(o){const v=o.v,w=v["/Width"],h=v["/Height"];if(!(w>0&&h>0))return;const m=ctx.getTransform(),devW=Math.hypot(m.a,m.b);let bmp=null;
+  const f=Array.isArray(v["/Filter"])?(v["/Filter"].length===1?v["/Filter"][0]:null):v["/Filter"];
+  try{if(f==="/DCTDecode"&&o.ds>=0){const rw=Math.max(1,Math.min(w,Math.ceil(devW))),rh=Math.max(1,Math.round(h*rw/w));bmp=await createImageBitmap(new Blob([bytes.subarray(o.ds,o.de)],{type:"image/jpeg"}),{resizeWidth:rw,resizeHeight:rh,resizeQuality:"medium"});}
+   else if((f===undefined||f==="/FlateDecode")&&v["/BitsPerComponent"]===8&&!v["/ImageMask"]&&o.ds>=0&&w*h<=4000000){const cs=mgRes(doc,v["/ColorSpace"]),n=cs==="/DeviceRGB"?3:cs==="/DeviceGray"?1:0;if(n){const d=await decodedStream(o,bytes);if(d.length>=w*h*n){const id=new ImageData(w,h);for(let p=0,q=0;p<w*h;p++){if(n===3){id.data[q++]=d[p*3];id.data[q++]=d[p*3+1];id.data[q++]=d[p*3+2];}else{const t=d[p];id.data[q++]=t;id.data[q++]=t;id.data[q++]=t;}id.data[q++]=255;}const cv=new OffscreenCanvas(w,h);cv.getContext("2d").putImageData(id,0,0);bmp=cv;}}}
+  }catch(e){bmp=null;}
+  ctx.save();ctx.transform(1,0,0,-1,0,1);if(bmp){ctx.globalAlpha=g.fa;ctx.imageSmoothingQuality="medium";ctx.drawImage(bmp,0,0,1,1);if(bmp.close)bmp.close();}else{ctx.fillStyle="#dcdcdc";ctx.fillRect(0,0,1,1);}ctx.restore();}
+ async function form(o){const v=o.v,m=mgArr(v["/Matrix"],6)||[1,0,0,1,0,0],bb=mgArr(v["/BBox"],4),fr=mgRes(doc,v["/Resources"]);let d;try{d=b2s(await decodedStream(o,bytes));}catch(e){return;}
+  ctx.save();ctx.transform(m[0],m[1],m[2],m[3],m[4],m[5]);if(bb){ctx.beginPath();ctx.rect(bb[0],bb[1],bb[2]-bb[0],bb[3]-bb[1]);ctx.clip();ctx.beginPath();}await mgDraw(doc,bytes,ctx,d,fr&&typeof fr==="object"?fr:res,depth+1,st);ctx.restore();}
+ const ops={
+  q(){ctx.save();stack.push({...g});},Q(){if(stack.length){ctx.restore();g=stack.pop();}},cm(){ctx.transform(num(0),num(1),num(2),num(3),num(4),num(5));},
+  w(){g.lw=num(0);},gs(){const e=mgRes(doc,res&&res["/ExtGState"]),d=e&&typeof e==="object"?mgRes(doc,e[args[0]]):null;if(d&&typeof d==="object"){if(typeof d["/ca"]==="number")g.fa=d["/ca"];if(typeof d["/CA"]==="number")g.sa=d["/CA"];}},
+  m(){cx=num(0);cy=num(1);ctx.moveTo(cx,cy);},l(){cx=num(0);cy=num(1);ctx.lineTo(cx,cy);},c(){ctx.bezierCurveTo(num(0),num(1),num(2),num(3),num(4),num(5));cx=num(4);cy=num(5);},
+  v(){ctx.bezierCurveTo(cx,cy,num(0),num(1),num(2),num(3));cx=num(2);cy=num(3);},y(){ctx.bezierCurveTo(num(0),num(1),num(2),num(3),num(2),num(3));cx=num(2);cy=num(3);},
+  re(){ctx.rect(num(0),num(1),num(2),num(3));cx=num(0);cy=num(1);},h(){ctx.closePath();},
+  S(){paint(0,1);},s(){ctx.closePath();paint(0,1);},f(){paint(1,0,0);},F(){paint(1,0,0);},"f*"(){paint(1,0,1);},B(){paint(1,1,0);},"B*"(){paint(1,1,1);},b(){ctx.closePath();paint(1,1,0);},"b*"(){ctx.closePath();paint(1,1,1);},n(){paint(0,0);},
+  W(){clip="nonzero";},"W*"(){clip="evenodd";},
+  g(){g.fill=mgColor([num(0)]);g.fcs="gray";},G(){g.stroke=mgColor([num(0)]);g.scs="gray";},rg(){g.fill=mgColor([num(0),num(1),num(2)]);g.fcs="rgb";},RG(){g.stroke=mgColor([num(0),num(1),num(2)]);g.scs="rgb";},
+  k(){g.fill=mgColor([num(0),num(1),num(2),num(3)]);g.fcs="cmyk";},K(){g.stroke=mgColor([num(0),num(1),num(2),num(3)]);g.scs="cmyk";},
+  cs(){g.fcs=mgCsKind(doc,res,args[0]);},CS(){g.scs=mgCsKind(doc,res,args[0]);},sc(){setCol(false);},scn(){setCol(false);},SC(){setCol(true);},SCN(){setCol(true);},
+  BT(){tm=[1,0,0,1,0,0];tlm=tm.slice();},Tc(){g.tc=num(0);},Tw(){g.tw=num(0);},Tz(){g.th=num(0)/100;},TL(){g.tl=num(0);},Ts(){g.rise=num(0);},Tr(){g.tr=num(0);},
+  Tf(){const k=String(args[0]);if(!fonts.has(k))fonts.set(k,mgFont(doc,res,k));g.font=fonts.get(k);g.size=num(1);},
+  Td(){tlm=mgMul([1,0,0,1,num(0),num(1)],tlm);tm=tlm.slice();},TD(){g.tl=-num(1);ops.Td();},Tm(){tlm=[num(0),num(1),num(2),num(3),num(4),num(5)];tm=tlm.slice();},"T*"(){nextLine();},
+  Tj(){if(args[0]&&args[0].s)show(mgStr(args[0].s));},
+  TJ(){if(!Array.isArray(args[0]))return;for(const e of args[0]){if(typeof e==="number")tm=mgMul([1,0,0,1,-e/1000*g.size*g.th,0],tm);else if(e&&e.s)show(mgStr(e.s));}},
+  "'"(){nextLine();ops.Tj();},'"'(){g.tw=num(0);g.tc=num(1);nextLine();if(args[2]&&args[2].s)show(mgStr(args[2].s));},
+  async Do(){const xo=mgRes(doc,res&&res["/XObject"]),ref=xo&&typeof xo==="object"?xo[args[0]]:null,o=ref&&ref.r!==undefined?doc.cache.get(ref.r):null;if(!o||!o.v)return;const sub=o.v["/Subtype"];if(sub==="/Image")await image(o);else if(sub==="/Form"&&depth<6)await form(o);}
+ };
+ for(;;){i=pdfSpace(text,i);if(i>=N)break;const c=text[i];
+  if(c==="/"){MG_NAME.lastIndex=i;const m=MG_NAME.exec(text);args.push(m[0]);i=MG_NAME.lastIndex;continue;}
+  if(c==="["||c==="("||c==="<"){try{const r=pv(text,i);args.push(r[0]);i=r[1];}catch(e){i++;}if(args.length>200)args=[];continue;}
+  if(/[+\-.\d]/.test(c)){MG_NUM.lastIndex=i;const m=MG_NUM.exec(text);if(m){args.push(Number(m[0]));i=MG_NUM.lastIndex;}else i++;if(args.length>200)args=[];continue;}
+  let j=i;while(j<N&&!/[\x00\s()<>\[\]{}\/%]/.test(text[j]))j++;if(j===i){i++;continue;}const op=text.slice(i,j);i=j;
+  if(op==="true"||op==="false"||op==="null"){args.push(op);continue;}
+  if(op==="BI"){const re=/\sEI(?=\s|$)/g;re.lastIndex=i;const m=re.exec(text);i=m?m.index+m[0].length:N;args=[];continue;}
+  const fn=ops[op];if(fn&&Object.prototype.hasOwnProperty.call(ops,op)){try{await fn();}catch(e){if(e instanceof TaskError&&e.code==="RESOURCE_LIMIT")throw e;}}args=[];
+  if(++st.ops>300000||Date.now()-st.t0>2500)break;}
+ while(stack.length){ctx.restore();stack.pop();}
+}
+async function mgContent(doc,bytes,page){const c=page.keep["/Contents"],v=mgRes(doc,c),list=Array.isArray(v)?v:c!==undefined?[c]:[],parts=[];let total=0;
+ for(const r of list){if(!r||r.r===undefined)continue;const o=doc.cache.get(r.r);if(!o||!(o.ds>=0))continue;const d=await decodedStream(o,bytes);total+=d.length;if(total>16777216)break;parts.push(b2s(d));}return parts.join("\n");}
+async function mgThumb(doc,bytes,page){mgReset();
+ const box=mgArr(mgRes(doc,page.keep["/CropBox"]),4)||mgArr(mgRes(doc,page.keep["/MediaBox"]),4);if(!box)return null;
+ const x0=Math.min(box[0],box[2]),x1=Math.max(box[0],box[2]),y0=Math.min(box[1],box[3]),y1=Math.max(box[1],box[3]),pw=x1-x0,ph=y1-y0;if(!(pw>0&&ph>0))return null;
+ const rot=(((Number(mgRes(doc,page.keep["/Rotate"]))||0)%360)+360)%360,swap=rot===90||rot===270,ow=swap?ph:pw,oh=swap?pw:ph,s=MG_THUMB_W/ow,cw=MG_THUMB_W,ch=Math.max(1,Math.min(cw*3,Math.round(oh*s)));
+ let text;try{text=await mgContent(doc,bytes,page);}catch(e){return null;}
+ const cv=new OffscreenCanvas(cw,ch),ctx=cv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,cw,ch);
+ const M=rot===90?[0,s,s,0,-y0*s,-x0*s]:rot===180?[-s,0,0,s,x1*s,-y0*s]:rot===270?[0,-s,-s,0,y1*s,x1*s]:[s,0,0,-s,-x0*s,y1*s];
+ ctx.setTransform(M[0],M[1],M[2],M[3],M[4],M[5]);ctx.beginPath();ctx.rect(x0,y0,pw,ph);ctx.clip();ctx.beginPath();
+ const res=mgRes(doc,page.keep["/Resources"]);
+ try{await mgDraw(doc,bytes,ctx,text,res&&typeof res==="object"?res:{},0,{ops:0,t0:Date.now()});}catch(e){}
+ return await cv.convertToBlob({type:"image/jpeg",quality:0.72});}
+async function mergeScan(data){const {bytes,doc}=await mergeOpen(data.file),n=doc.pages.length,thumbs=[],can=typeof OffscreenCanvas!=="undefined"&&typeof createImageBitmap!=="undefined";
+ for(let i=0;i<n;i++){if(!can||i>=MG_THUMB_MAX){thumbs.push(null);continue;}if(i%4===0)workerProgress({stage:"merge",text:`gerando a pré-visualização (${i+1} de ${n})…`});let b=null;try{b=await mgThumb(doc,bytes,doc.pages[i]);}catch(e){b=null;}thumbs.push(b);}
+ return{pages:n,version:doc.version,thumbs};}
 const mgNum=(v)=>{if(Number.isInteger(v))return String(v);let t=String(v);if(/e/i.test(t))t=v.toFixed(12).replace(/0+$/,"").replace(/\.$/,"");return t;};
 function mgSer(v,base){if(v===null||v===undefined)return"null";if(typeof v==="number")return mgNum(v);if(typeof v==="string")return v;if(Array.isArray(v))return"["+v.map(x=>mgSer(x,base)).join(" ")+"]";if(v.r!==undefined)return`${v.r+base} ${v.g||0} R`;if(v.s!==undefined)return v.s;return"<<"+Object.keys(v).map(k=>k+" "+mgSer(v[k],base)).join(" ")+">>";}
-function mgBuild(docs){
+function mgBuild(docs,order){
  const chunks=[],off=new Map();let len=0;
  const push=(d)=>{const b=typeof d==="string"?s2b(d):d;len+=b.length;outputGuard(len);chunks.push(b);};
  const ver=docs.map(d=>d.version).reduce((m,v)=>Number(v)>Number(m)?v:m);
  const cvs=docs.map(d=>d.catalogVersion).filter(v=>v!==undefined).map(v=>v.slice(1));
  push(`%PDF-${ver}\n`);push(new Uint8Array([37,226,227,207,211,10]));
  let base=0;const bases=[];for(const d of docs){bases.push(base);base+=d.maxN;}if(!Number.isSafeInteger(base+3))pdfFail("Numeração PDF fora do intervalo suportado.");
- const pgs=base,cat=base+1,kids=[];
- docs.forEach((doc,k)=>{const b=bases[k],all=new Set();doc.pages.forEach(p=>p.set.forEach(n=>all.add(n)));
+ const pgs=base,cat=base+1,used=docs.map(()=>new Set());for(const [fi,pi] of order){if(used[fi].has(pi))pdfFail("Página repetida na ordem de saída.");used[fi].add(pi);}
+ docs.forEach((doc,k)=>{const b=bases[k],all=new Set();for(const pi of used[k])doc.pages[pi].set.forEach(n=>all.add(n));
   for(const n of [...all].sort((x,y)=>x-y)){const o=doc.cache.get(n);if(!o)pdfFail("Objeto não carregado.");const num=n+b;if(off.has(num))pdfFail("Colisão de objetos no PDF de saída.");off.set(num,[len,o.g]);
    push(`${num} ${o.g} obj\n${mgSer(o.v,b)}`);
    if(o.ds>=0&&o.de>=o.ds){push("\nstream\n");push(o.raw.subarray(o.ds-o.off,o.de-o.off));push("\nendstream");}
    push("\nendobj\n");}
-  for(const p of doc.pages){const num=p.n+b;if(off.has(num))pdfFail("Colisão de objetos no PDF de saída.");off.set(num,[len,p.g]);const tail=Object.keys(p.keep).map(key=>" "+key+" "+mgSer(p.keep[key],b)).join("");push(`${num} ${p.g} obj\n<</Type/Page/Parent ${pgs} 0 R${tail}>>\nendobj\n`);kids.push(`${num} ${p.g} R`);}
+  for(const pi of [...used[k]].sort((x,y)=>x-y)){const p=doc.pages[pi],num=p.n+b;if(off.has(num))pdfFail("Colisão de objetos no PDF de saída.");off.set(num,[len,p.g]);const tail=Object.keys(p.keep).map(key=>" "+key+" "+mgSer(p.keep[key],b)).join("");push(`${num} ${p.g} obj\n<</Type/Page/Parent ${pgs} 0 R${tail}>>\nendobj\n`);}
  });
+ const kids=order.map(([fi,pi])=>{const p=docs[fi].pages[pi];return`${p.n+bases[fi]} ${p.g} R`;});
  off.set(pgs,[len,0]);push(`${pgs} 0 obj\n<</Type/Pages/Count ${kids.length}/Kids[${kids.join(" ")}]>>\nendobj\n`);
  const cmax=cvs.length?cvs.reduce((m,v)=>Number(v)>Number(m)?v:m):null;
  off.set(cat,[len,0]);push(`${cat} 0 obj\n<</Type/Catalog/Pages ${pgs} 0 R${cmax?" /Version /"+cmax:""}>>\nendobj\n`);
@@ -855,13 +948,15 @@ function mgBuild(docs){
  const out=new Uint8Array(len);let cursor=0;for(const c of chunks){out.set(c,cursor);cursor+=c.length;}return out;
 }
 async function mergeRun(data){
- const files=data.files;if(!Array.isArray(files)||files.length<2)taskFail("INVALID_INPUT","Selecione pelo menos 2 PDFs para juntar.");if(files.length>MG_MAX)taskFail("RESOURCE_LIMIT",`Seleção limitada a ${MG_MAX} PDFs.`);
- inputGuard(files.reduce((n,f)=>n+f.size,0));const docs=[];let pages=0;
- for(let i=0;i<files.length;i++){workerProgress({stage:"merge",text:`lendo ${files[i].name} (${i+1} de ${files.length})…`});try{const {doc}=await mergeOpen(files[i]);docs.push(doc);pages+=doc.pages.length;}catch(e){if(e instanceof TaskError)e.message=`${files[i].name}: ${e.message}`;throw e;}}
- workerProgress({stage:"merge",text:"montando o PDF final…"});const pdf=mgBuild(docs);
+ const files=data.files,order=data.order;if(!Array.isArray(files)||files.length<2)taskFail("INVALID_INPUT","Selecione pelo menos 2 PDFs para juntar.");if(files.length>MG_MAX)taskFail("RESOURCE_LIMIT",`Seleção limitada a ${MG_MAX} PDFs.`);
+ if(!Array.isArray(order)||!order.length||order.length>POLICY.pages*2)taskFail("INVALID_INPUT","Ordem de páginas inválida.");
+ inputGuard(files.reduce((n,f)=>n+f.size,0));const docs=[];
+ for(let i=0;i<files.length;i++){workerProgress({stage:"merge",text:`lendo ${files[i].name} (${i+1} de ${files.length})…`});try{const {doc}=await mergeOpen(files[i]);docs.push(doc);}catch(e){if(e instanceof TaskError)e.message=`${files[i].name}: ${e.message}`;throw e;}}
+ const seen=new Set();for(const e of order){if(!Array.isArray(e)||e.length!==2||!Number.isInteger(e[0])||!Number.isInteger(e[1])||e[0]<0||e[0]>=docs.length||e[1]<0||e[1]>=docs[e[0]].pages.length)taskFail("INVALID_INPUT","Ordem de páginas inválida.");const key=e[0]+":"+e[1];if(seen.has(key))taskFail("INVALID_INPUT","Ordem de páginas inválida: página repetida.");seen.add(key);}
+ workerProgress({stage:"merge",text:"montando o PDF final…"});const pdf=mgBuild(docs,order);
  workerProgress({stage:"merge",text:"conferindo o resultado…"});mgReset();const check=await pdfOpen(pdf);
- if(check.pages.length!==pages)taskFail("INTERNAL","A conferência do PDF final falhou; nenhuma saída foi liberada.");
- return{pdf,size:pdf.length,pages};
+ if(check.pages.length!==order.length)taskFail("INTERNAL","A conferência do PDF final falhou; nenhuma saída foi liberada.");
+ return{pdf,size:pdf.length,pages:order.length};
 }
 self.onmessage=async(event)=>{const {kind,data}=event.data;try{budget.tokens=0;budget.expanded=0;budget.links=0;let result;if(kind==="pdf")result=await processPdf(data);else if(kind==="prepare")result=await prepareImages(data.files,data.existingPixels,data.existing||[]);else if(kind==="generate")result=await generateImages(data);else if(kind==="optscan")result=await optScan(data);else if(kind==="optrun")result=await optRun(data);else if(kind==="mergescan")result=await mergeScan(data);else if(kind==="mergerun")result=await mergeRun(data);else taskFail("INTERNAL","Operação desconhecida.");const transfer=[];if(result.pdf)transfer.push(result.pdf.buffer);if(result.parts)for(const part of result.parts)transfer.push(part.bytes.buffer);self.postMessage({type:"result",result},[...new Set(transfer)]);}catch(e){self.postMessage({type:"error",code:e instanceof TaskError?e.code:"INTERNAL",message:e instanceof TaskError?e.message:"Falha interna no processamento local. Nenhuma saída foi liberada."});}};
 
@@ -906,7 +1001,7 @@ let modalState=null,modalFocusGuard=false;
 function focusToken(node=document.activeElement){if(!node)return null;if(node.dataset?.focusKey)return{key:node.dataset.focusKey};if(node.id)return{id:node.id};return{node};}
 function resolveFocus(token){if(!token)return null;if(token.key)return Array.from(document.querySelectorAll("[data-focus-key]")).find(n=>n.dataset.focusKey===token.key)||null;if(token.id)return $(token.id);return token.node||null;}
 function usableFocus(node){return !!node&&node!==document.body&&node.isConnected!==false&&!node.disabled&&!node.closest(".hidden,[hidden],[inert]");}
-function restoreFocus(token){const target=resolveFocus(token);if(usableFocus(target)){target.focus();return;}const fallback=activeOperation?opCancelButton():mode==="history"?$("historyBtn"):mode==="opt"?(optDoc?$("optRun"):$("optBtn")):mode==="img"?(items.length?$("addBtn"):$("selectBtn")):mode==="pdf"?(spDoc?$("spClear"):$("pdfBtn")):$("cardImg");if(usableFocus(fallback))fallback.focus();}
+function restoreFocus(token){const target=resolveFocus(token);if(usableFocus(target)){target.focus();return;}const fallback=activeOperation?opCancelButton():mode==="history"?$("historyBtn"):mode==="opt"?(optDoc?$("optRun"):$("optBtn")):mode==="img"?(items.length?$("addBtn"):$("selectBtn")):mode==="pdf"?(spDoc?$("spClear"):$("pdfBtn")):mode==="mrg"?(mgItems.length?$("mgAdd"):$("mgSelect")):$("cardImg");if(usableFocus(fallback))fallback.focus();}
 function modalButtons(root){return Array.from(root.querySelectorAll("button,[href],input,select,textarea,[tabindex]")).filter(n=>!n.disabled&&n.getAttribute("tabindex")!=="-1"&&!n.closest(".hidden,[hidden],[inert]"));}
 function openManagedDialog(id,initialId,onEscape,returnToken=focusToken()){
  if(modalState)closeManagedDialog(modalState.id,false);const root=$(id),siblings=[];root.classList.remove("hidden");root.setAttribute("tabindex","-1");
@@ -1180,7 +1275,7 @@ if (dragFrom !== null) { dragFrom = null; return; } // soltura de uma imagem já
 routeFiles(e.dataTransfer && e.dataTransfer.files);
 });
 // Sem persistência: encerrar libera referências, não apaga originais nem certifica limpeza forense.
-window.addEventListener('pagehide', () => {mgItems=[];if(activeOperation)cancelOperation(); items.forEach((i) => { revoke(i.url); revoke(i.thumb); }); items.length=0;downloadRequests=[];downloadSequence=0;});
+window.addEventListener('pagehide', () => {mgItems.forEach(mgRevoke);mgItems=[];mgOrder=[];if(activeOperation)cancelOperation(); items.forEach((i) => { revoke(i.url); revoke(i.thumb); }); items.length=0;downloadRequests=[];downloadSequence=0;});
 /* ---------- janela de ajuda ---------- */
 const HELP_AUTO_OPEN = true; // false: abre só pelo botão "Como usar"
 const help = $('help');
@@ -1434,36 +1529,70 @@ function saveOpt(){
 function clearOpt(){if(denyMutation())return;optDoc=null;optScanRes=null;optOut=null;optRes=null;$("optRows").replaceChildren();showOptResult();$("optNote").textContent="";optTargetNote();setMode("opt",true);msg("");restoreFocus({id:"optBtn"});}
 /* ---------- módulo "Juntar PDFs": interface (o processamento roda no worker; os demais módulos não são afetados) ---------- */
 const MG_MAX=50;
-const mgTotal=()=>mgItems.reduce((n,i)=>n+i.size,0),mgPages=()=>mgItems.reduce((n,i)=>n+i.pages,0);
+let mgOrder=[]; /* ordem final: {f: id do arquivo, p: índice da página (0 = primeira) no arquivo} */
 const pgWord=n=>n===1?"página":"páginas";
+const mgFile=id=>mgItems.find(i=>i.id===id);
+const mgTotal=()=>mgItems.reduce((n,i)=>n+i.size,0);
+const mgRevoke=f=>f.thumbs.forEach(u=>{if(u)URL.revokeObjectURL(u);});
+function mgFileOrder(){const seen=[];for(const o of mgOrder)if(!seen.includes(o.f))seen.push(o.f);return seen.map(mgFile);}
+function mgNatural(){return mgFileOrder().flatMap(f=>Array.from({length:f.pages},(_,p)=>({f:f.id,p})));}
+const mgKey=(o,a)=>`${o.f}:${o.p}:${a}`;
 function mgSync(){
  const locked=!!activeOperation,has=mgItems.length>0;
  $("mrgZone").classList.toggle("hidden",mode!=="mrg"||has||isImporting());
  $("mrgPanel").classList.toggle("hidden",mode!=="mrg"||!has);
- $("cardMrg").disabled=locked;$("mgSelect").disabled=locked;$("mgInput").disabled=locked;$("mgAdd").disabled=locked;$("mgClear").disabled=locked||!has;
- $("mgRun").disabled=locked||mgItems.length<2;
- document.querySelectorAll("#mgList button").forEach(b=>{b.disabled=locked;});
+ $("cardMrg").disabled=locked;$("mgSelect").disabled=locked;$("mgInput").disabled=locked;$("mgAdd").disabled=locked;$("mgClear").disabled=locked||!has;$("mgReset").disabled=locked||!has;
+ $("mgRun").disabled=locked||mgFileOrder().length<2;
+ document.querySelectorAll("#mgList button,#mgGrid button").forEach(b=>{b.disabled=locked;});
+ document.querySelectorAll("#mgGrid .card").forEach(c=>{c.draggable=!locked;});
 }
 function mgRender(){
- $("mgCount").textContent=`${mgItems.length} ${mgItems.length===1?"PDF selecionado":"PDFs selecionados"}`;
- $("mgSize").textContent=`${mgPages()} ${pgWord(mgPages())} · somados: ${fmtMB(mgTotal())}`;
- $("mgSummary").textContent=mgItems.length<2?"Adicione pelo menos 2 PDFs para juntar.":`Resultado: ${mgItems.length} arquivos em 1 PDF com ${mgPages()} ${pgWord(mgPages())}, com cerca de ${fmtMB(mgTotal())}.`;
- $("mgList").replaceChildren(...mgItems.map((it,i)=>{
+ const files=mgFileOrder(),pages=mgOrder.length;
+ $("mgCount").textContent=`${files.length} ${files.length===1?"PDF selecionado":"PDFs selecionados"}`;
+ $("mgSize").textContent=`${pages} ${pgWord(pages)} · somados: ${fmtMB(mgTotal())}`;
+ $("mgSummary").textContent=files.length<2?"Adicione pelo menos 2 PDFs para juntar.":`Resultado: ${files.length} arquivos em 1 PDF com ${pages} ${pgWord(pages)}, com cerca de ${fmtMB(mgTotal())}.`;
+ const noPrev=mgOrder.some(o=>!mgFile(o.f).thumbs[o.p]);
+ $("mgNote").textContent="Arraste as páginas para reorganizar. A pré-visualização é aproximada (imagens e formas aparecem; textos viram blocos cinza); o PDF final usa as páginas originais."+(noPrev?" Algumas páginas não têm pré-visualização, mas entram normalmente no PDF final.":"");
+ $("mgList").replaceChildren(...files.map((it,i)=>{
   const row=el("div","part mrg"),head=el("div","ph"),acts=el("div","acts");
   head.append(el("strong","",`${i+1}. ${it.name}`),el("span","muted",`${it.pages} ${pgWord(it.pages)} · ${fmtMB(it.size)}`));
-  const up=btn("↑",`Mover ${it.name} para cima`,()=>mgMove(it,-1,"up"));up.dataset.focusKey=it.id+":up";up.setAttribute("aria-disabled",String(i===0));
-  const down=btn("↓",`Mover ${it.name} para baixo`,()=>mgMove(it,1,"down"));down.dataset.focusKey=it.id+":down";down.setAttribute("aria-disabled",String(i===mgItems.length-1));
-  const rm=btn("×",`Remover ${it.name}`,()=>mgRemove(it),"rm");rm.dataset.focusKey=it.id+":remove";
+  const up=btn("↑",`Mover o arquivo ${it.name} para cima`,()=>mgMoveFile(it,-1));up.dataset.focusKey=it.id+":up";up.setAttribute("aria-disabled",String(i===0));
+  const down=btn("↓",`Mover o arquivo ${it.name} para baixo`,()=>mgMoveFile(it,1));down.dataset.focusKey=it.id+":down";down.setAttribute("aria-disabled",String(i===files.length-1));
+  const rm=btn("×",`Remover o arquivo ${it.name}`,()=>mgRemove(it),"rm");rm.dataset.focusKey=it.id+":remove";
   acts.append(up,down,rm);row.append(head,acts);return row;}));
+ $("mgGrid").replaceChildren(...mgOrder.map(mgTile));
  mgSync();
 }
-function mgMove(it,d,action){if(denyMutation())return;const from=mgItems.indexOf(it),to=from+d;if(from<0)return;
- if(to<0||to>=mgItems.length){msg(`${it.name}: já está no limite desta direção.`);restoreFocus({key:it.id+":"+action});return;}
- mgItems.splice(to,0,mgItems.splice(from,1)[0]);mgRender();restoreFocus({key:it.id+":"+action});msg(`${it.name}: movido para a posição ${to+1} de ${mgItems.length}.`);}
-function mgRemove(it){if(denyMutation())return;const i=mgItems.indexOf(it);if(i<0)return;mgItems.splice(i,1);mgRender();
- if(mgItems.length)restoreFocus({key:mgItems[Math.min(i,mgItems.length-1)].id+":remove"});else $("mgSelect").focus();
- msg(`${it.name}: removido. ${mgItems.length} PDF(s) na seleção.`);}
-function mgClearAll(){if(denyMutation())return;if(!mgItems.length)return;if(!window.confirm("Remover todos os PDFs da seleção? Os arquivos no computador não serão excluídos."))return;mgItems=[];mgRender();msg("");$("mgSelect").focus();}
+function mgTile(o,i){
+ const f=mgFile(o.f),c=el("article","card"),n=mgOrder.length;
+ c.draggable=!activeOperation;c.style.borderTopColor=`hsl(${(mgItems.indexOf(f)*47)%360} 55% 45%)`;
+ c.setAttribute("aria-label",`Página ${i+1} de ${n}: ${f.name}, página ${o.p+1}`);
+ c.ondragstart=e=>{if(activeOperation){e.preventDefault();return;}dragFrom=i;e.dataTransfer.setData("text/plain",String(i));e.dataTransfer.effectAllowed="move";c.classList.add("drag");};
+ c.ondragend=()=>{dragFrom=null;c.classList.remove("drag");document.body.classList.remove("dragging");document.querySelectorAll("#mgGrid .over").forEach(x=>x.classList.remove("over"));};
+ c.ondragover=e=>{if(dragFrom!==null){e.preventDefault();c.classList.add("over");}};c.ondragleave=()=>c.classList.remove("over");
+ c.ondrop=e=>{if(dragFrom===null)return;e.preventDefault();e.stopPropagation();const from=dragFrom;dragFrom=null;mgMovePage(from,i,"up");};
+ const url=f.thumbs[o.p];let th;if(url){th=el("img","thumb pgth");th.alt="";th.decoding="async";th.draggable=false;th.src=url;}else th=el("div","thumb pgth noprev","Pré-visualização indisponível");
+ c.append(el("span","badge",String(i+1)),th);
+ const meta=el("div","meta"),name=el("span","name",`${f.name} · pág. ${o.p+1}`);name.title=name.textContent;
+ const up=btn("↑",`Mover a página ${i+1} (${f.name}, página ${o.p+1}) para antes`,()=>mgMovePage(mgOrder.indexOf(o),mgOrder.indexOf(o)-1,"up"));up.dataset.focusKey=mgKey(o,"up");up.setAttribute("aria-disabled",String(i===0));
+ const down=btn("↓",`Mover a página ${i+1} (${f.name}, página ${o.p+1}) para depois`,()=>mgMovePage(mgOrder.indexOf(o),mgOrder.indexOf(o)+1,"down"));down.dataset.focusKey=mgKey(o,"down");down.setAttribute("aria-disabled",String(i===n-1));
+ meta.append(name,up,down);c.append(meta);return c;
+}
+function mgMovePage(from,to,action){if(denyMutation())return;if(from<0||from>=mgOrder.length)return;const o=mgOrder[from];
+ if(to<0||to>=mgOrder.length||to===from){if(to!==from)msg(`Página ${from+1} de ${mgOrder.length}: já está no limite desta direção.`);restoreFocus({key:mgKey(o,action)});return;}
+ mgOrder.splice(to,0,mgOrder.splice(from,1)[0]);mgRender();restoreFocus({key:mgKey(o,action)});msg(`${mgFile(o.f).name}, página ${o.p+1}: movida para a posição ${to+1} de ${mgOrder.length}.`);}
+function mgMoveFile(it,d){if(denyMutation())return;const files=mgFileOrder(),i=files.indexOf(it),nb=files[i+d],act=d<0?"up":"down";
+ if(i<0)return;if(!nb){msg(`${it.name}: já está no limite desta direção.`);restoreFocus({key:it.id+":"+act});return;}
+ const block=mgOrder.filter(o=>o.f===it.id),rest=mgOrder.filter(o=>o.f!==it.id);let at;
+ if(d<0)at=rest.findIndex(o=>o.f===nb.id);else{at=rest.length;for(let k=rest.length-1;k>=0;k--)if(rest[k].f===nb.id){at=k+1;break;}}
+ rest.splice(at,0,...block);mgOrder=rest;mgRender();restoreFocus({key:it.id+":"+act});msg(`${it.name}: arquivo movido para a posição ${i+d+1} de ${files.length}.`);}
+function mgRemove(it){if(denyMutation())return;const files=mgFileOrder(),i=files.indexOf(it);if(i<0)return;
+ mgOrder=mgOrder.filter(o=>o.f!==it.id);mgRevoke(it);mgItems.splice(mgItems.indexOf(it),1);mgRender();
+ const left=mgFileOrder();if(left.length)restoreFocus({key:left[Math.min(i,left.length-1)].id+":remove"});else $("mgSelect").focus();
+ msg(`${it.name}: removido. ${left.length} PDF(s) na seleção.`);}
+function mgResetOrder(){if(denyMutation())return;const nat=mgNatural();if(JSON.stringify(nat)===JSON.stringify(mgOrder)){msg("A ordem das páginas já é a original.");return;}
+ if(!window.confirm("Restaurar a ordem original? As páginas voltam à ordem de cada arquivo, agrupadas por arquivo."))return;mgOrder=nat;mgRender();msg("Ordem original restaurada.");}
+function mgClearAll(){if(denyMutation())return;if(!mgItems.length)return;if(!window.confirm("Remover todos os PDFs da seleção? Os arquivos no computador não serão excluídos."))return;mgItems.forEach(mgRevoke);mgItems=[];mgOrder=[];mgRender();msg("");$("mgSelect").focus();}
 async function addMergePdfs(list){
  if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}
  if(denyMutation())return;const files=Array.from(list||[]);if(!files.length)return;let op;
@@ -1472,21 +1601,22 @@ async function addMergePdfs(list){
   if(mgItems.length+files.length>MG_MAX)throw new TaskError("RESOURCE_LIMIT",`Seleção limitada a ${MG_MAX} PDFs.`);
   inputGuard(mgTotal()+files.reduce((n,f)=>n+f.size,0));
   op=beginOperation("loading-pdf",`${files.length} arquivo(s)`);loadOpenPdf(files[0].name);setMode("mrg",true);
-  const added=[];
+  const scanned=[];
   for(let i=0;i<files.length;i++){const file=files[i];$("loadLine").textContent=`${file.name} · lendo ${i+1} de ${files.length}…`;
-   let r;try{r=await workerJob(op,"mergescan",{file});}catch(err){if(err instanceof TaskError&&err.code!=="CANCELLED")err.message=`${file.name}: ${err.message} Nenhum arquivo deste lote foi adicionado.`;throw err;}
-   ensureCurrent(op);added.push({id:`${op.id}-${i}-${Date.now()}`,file,name:file.name,size:file.size,pages:r.pages});}
-  ensureCurrent(op);mgItems.push(...added);mgSeq++;
-  msg(`${added.length} PDF(s) adicionado(s). ${mgItems.length} na seleção, com ${mgPages()} ${pgWord(mgPages())} no total.`);
+   let r;try{r=await workerJob(op,"mergescan",{file},m=>{$("loadLine").textContent=`${file.name} · ${m.text}`;});}catch(err){if(err instanceof TaskError&&err.code!=="CANCELLED")err.message=`${file.name}: ${err.message} Nenhum arquivo deste lote foi adicionado.`;throw err;}
+   ensureCurrent(op);scanned.push({file,r});}
+  ensureCurrent(op);const added=scanned.map(({file,r},i)=>({id:`${op.id}-${i}-${Date.now()}`,file,name:file.name,size:file.size,pages:r.pages,thumbs:r.thumbs.map(b=>b?URL.createObjectURL(b):"")}));
+  mgItems.push(...added);for(const f of added)for(let p=0;p<f.pages;p++)mgOrder.push({f:f.id,p});
+  msg(`${added.length} PDF(s) adicionado(s). ${mgFileOrder().length} na seleção, com ${mgOrder.length} ${pgWord(mgOrder.length)} no total.`);
  }catch(e){if(!op||operationCurrent(op))showOperationError(op,e);}
  finally{if(op)endOperation(op);mgRender();}
 }
 async function mgRunMerge(){
- if(denyMutation())return;if(mgItems.length<2){msg("Adicione pelo menos 2 PDFs para juntar.",true);return;}
- const batch=mgItems.slice(),expected=mgPages(),op=beginOperation("merging",`${batch.length} arquivos`);
+ if(denyMutation())return;if(mgFileOrder().length<2){msg("Adicione pelo menos 2 PDFs para juntar.",true);return;}
+ const batch=mgItems.slice(),snap=JSON.stringify(mgOrder),order=mgOrder.map(o=>[batch.indexOf(mgFile(o.f)),o.p]),expected=mgOrder.length,op=beginOperation("merging",`${batch.length} arquivos`);
  try{
-  const result=await workerJob(op,"mergerun",{files:batch.map(i=>i.file)},m=>{$("operationText").textContent="Juntando PDFs · "+m.text;});ensureCurrent(op);
-  if(batch.length!==mgItems.length||batch.some((b,i)=>b!==mgItems[i]))throw new TaskError("CANCELLED","A seleção mudou durante a junção; resultado descartado.");
+  const result=await workerJob(op,"mergerun",{files:batch.map(i=>i.file),order},m=>{$("operationText").textContent="Juntando PDFs · "+m.text;});ensureCurrent(op);
+  if(JSON.stringify(mgOrder)!==snap)throw new TaskError("CANCELLED","A seleção ou a ordem mudou durante a junção; resultado descartado.");
   if(result.pages!==expected)throw new TaskError("INTERNAL","Falha de conferência: a contagem de páginas não confere; nenhum download foi solicitado.");
   const name=`PDFJuntado__${new Date().toLocaleDateString("sv-SE")}.pdf`;safeSave(op,result.pdf,name);
   msg(`Download solicitado: ${name} · ${fmtMB(result.pdf.length)} · ${result.pages} ${pgWord(result.pages)}. Confira no navegador; gravação não confirmada.`);
@@ -1496,7 +1626,7 @@ async function mgRunMerge(){
 $("cardMrg").onclick=()=>setMode("mrg");
 $("mgSelect").onclick=$("mgAdd").onclick=()=>{if(!activeOperation)$("mgInput").click();else denyMutation();};
 $("mgInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};
-$("mgClear").onclick=mgClearAll;$("mgRun").onclick=mgRunMerge;
+$("mgClear").onclick=mgClearAll;$("mgReset").onclick=mgResetOrder;$("mgRun").onclick=mgRunMerge;
 $("cardOpt").onclick=()=>setMode("opt");
 $("optBtn").onclick=()=>{if(!activeOperation)$("optInput").click();else denyMutation();};
 $("optInput").onchange=e=>{const files=Array.from(e.target.files);e.target.value="";routeFiles(files);};

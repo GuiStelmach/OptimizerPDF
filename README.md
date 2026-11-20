@@ -11,7 +11,7 @@ Aplicação web offline para organizar imagens, juntar e dividir PDFs e reduzir 
 
 Teste online: [abrir no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
 
-Versão atual: 1.10.0  
+Versão atual: 1.11.0  
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 
 ---
@@ -45,7 +45,8 @@ O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem 
 - Geração interna de PDF sem usar `window.print()` ou impressora virtual.
 - Ajuste automático de qualidade e resolução para respeitar um limite em MB.
 - Confirmação explícita antes de baixar um PDF acima do limite.
-- União de vários PDFs em um único arquivo, com ordem definida pelo usuário e sem recompressão: texto, imagens e layout das páginas são copiados como estão.
+- União de vários PDFs em um único arquivo, sem recompressão: texto, imagens e layout das páginas são copiados como estão.
+- Pré-visualização em miniaturas de todas as páginas dos PDFs a juntar, com reorganização página a página por arraste (ou pelos botões ↑ e ↓) antes de gerar o arquivo final.
 - Divisão de PDF existente em partes com limite por parte e máximo de anexos.
 - Preservação do original quando o arquivo já cabe no limite.
 - Otimização de PDFs existentes com comparação antes/depois e meta de tamanho.
@@ -89,12 +90,12 @@ Nome padrão do arquivo de saída: `PDFGerado__AAAA-MM-DD.pdf`.
 
 1. Clique em `Juntar PDFs`.
 2. Selecione dois ou mais arquivos PDF ou arraste-os para a página (é possível usar `Adicionar mais` depois).
-3. Defina a ordem com os botões ↑ e ↓ e remova o que não for necessário.
+3. Reorganize: arraste as miniaturas das páginas (ou use ↑ e ↓ em cada página) para definir a ordem final. Os botões ↑ e ↓ da lista de arquivos movem o arquivo inteiro, e `Restaurar ordem` volta à ordem original.
 4. Clique em `Juntar e baixar PDF`. O app confere a contagem de páginas e reabre o resultado antes de liberar o download.
 
 Nome padrão do arquivo de saída: `PDFJuntado__AAAA-MM-DD.pdf`.
 
-As páginas são copiadas sem recompressão, então a aparência do documento não muda. O título e o autor dos documentos de origem não são copiados. PDFs protegidos por senha, com anotações, formulários ou revisões incrementais são bloqueados com explicação, em vez de terem esses recursos removidos.
+As páginas são copiadas sem recompressão, então a aparência do documento não muda; só a ordem escolhida é aplicada. As miniaturas são uma prévia aproximada (imagens e formas aparecem; textos viram blocos cinza) e servem apenas para identificar as páginas: o PDF final usa as páginas originais. O título e o autor dos documentos de origem não são copiados. PDFs protegidos por senha, com anotações, formulários ou revisões incrementais são bloqueados com explicação, em vez de terem esses recursos removidos.
 
 ### 3) Dividir um PDF existente
 
@@ -201,7 +202,7 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 - O layout da criação de PDF limita o máximo de duas linhas por página.
 - Formatos que o navegador não consegue decodificar, como HEIC em alguns navegadores, podem ser rejeitados.
 - PDFs protegidos por senha, com formulários, anotações ou revisões incrementais podem ser bloqueados pela operação de junção, divisão ou otimização.
-- Na junção, o resultado soma os tamanhos dos arquivos de origem (não há compressão); se ficar grande, use `Dividir PDF` ou `Otimizar PDF`. A seleção é limitada a 50 PDFs.
+- Na junção, o resultado soma os tamanhos dos arquivos de origem (não há compressão); se ficar grande, use `Dividir PDF` ou `Otimizar PDF`. A seleção é limitada a 50 PDFs, e as miniaturas são geradas para as 300 primeiras páginas de cada arquivo (as demais entram normalmente no PDF final, sem miniatura).
 - PDFs extremamente grandes ou com muitas páginas aumentam o uso de memória e o tempo de processamento.
 
 ## Estrutura do projeto
@@ -218,6 +219,7 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 
 | Versão | Mudanças principais |
 |---|---|
+| 1.11.0 | Juntar PDFs com pré-visualização em miniaturas e reorganização página a página por arraste, com botões ↑ ↓ como alternativa e restauração da ordem original. |
 | 1.10.0 | Novo módulo Juntar PDFs: une vários PDFs em um só, na ordem escolhida, sem recompressão, com conferência do resultado antes do download. |
 | 1.9.1 | Nova identidade visual: logo no cabeçalho, favicon e pasta `assets/`. |
 | 1.9.0 | Novo módulo de otimização de PDF, meta de tamanho, piso de leitura, comparação antes/depois, avisos padronizados e melhor experiência visual. |
