@@ -2,7 +2,7 @@
 Projeto: OptimizerPDF
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 Finalidade: organização de imagens e geração, junção, divisão e otimização de documentos PDF, como alternativa ao Word (100% offline, sem bibliotecas).
-Versão: 1.11.0 (Juntar PDFs com pré-visualização das páginas e reorganização página a página por arraste; versão anterior 1.10.0: novo módulo Juntar PDFs: une vários PDFs em um só, copiando as páginas sem recompressão; versão anterior 1.9.1: nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
+Versão: 1.12.0 (novo layout: menu lateral recolhível (sanduíche), alertas e confirmações em pop-up, notificações rápidas em fila com tempo próprio, cartões da tela inicial com selos; versão anterior 1.11.0: Juntar PDFs com pré-visualização das páginas e reorganização página a página por arraste; versão anterior 1.10.0: novo módulo Juntar PDFs: une vários PDFs em um só, copiando as páginas sem recompressão; versão anterior 1.9.1: nova identidade visual com logo e favicon; versão anterior 1.9.0: novo módulo Otimizar PDF: meta de tamanho, piso de leitura e comparação antes/depois; avisos padronizados; carregamento de imagens e de PDF com progresso; tamanhos em MB; limites dobrados; ajuda enxuta; identidade visual própria; versão anterior 1.8.1-P2: A09–A12: conteúdo, acessibilidade, responsividade e downloads; versão anterior: A03 a A08: workers, cancelamento, limites e transações; versão anterior: correção conservadora de integridade e divisão por bytes exatos; versão anterior 1.7.0: novo layout com cabeçalho, menu, título de página e cartões; v1.6.0 divisão de PDF grande em partes sem recompressão, com limite de anexos; v1.5.0 janela de progresso na geração, com cancelamento; v1.4.0 confirmação antes de salvar PDF acima do limite; v1.3.1 correção: arrastar uma imagem já anexada não cria mais cópia; v1.3.0 janela de ajuda; v1.2.0 revisão visual: área de trabalho em duas colunas, medidor de tamanho, destaque cruzado lista/páginas; v1.1.0: ordem preservada, PDF gerado internamente com tamanho exato, miniaturas leves, CSP)
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -281,18 +281,61 @@ html{scrollbar-gutter:stable}body{overflow-wrap:anywhere}img{max-width:100%}.wra
 .thumb.pgth{aspect-ratio:3/4}
 .thumb.noprev{display:flex;align-items:center;justify-content:center;padding:8px;text-align:center;color:var(--muted);font-size:var(--fs-xs)}
 #mgGrid .card{border-top-width:3px}
+/* ---- v1.12.0: menu lateral recolhível, notificações em fila e pop-ups ---- */
+.hleft{display:flex;align-items:center;gap:6px;min-width:0}
+.mbtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;padding:0;border:0;border-radius:10px;background:transparent;color:#fff;cursor:pointer}.mbtn:hover{background:rgba(255,255,255,.18)}
+.scrim{position:fixed;inset:0;z-index:45;background:rgba(10,30,40,.45)}
+.sidenav{position:fixed;top:0;left:0;bottom:0;z-index:50;display:flex;flex-direction:column;width:min(290px,86vw);padding:14px 12px;box-sizing:border-box;background:#0b3d4f;color:#fff;box-shadow:6px 0 24px rgba(0,0,0,.25);transform:translateX(-100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.sidenav.open{transform:none;visibility:visible;transition:transform .22s ease}
+.sn-h{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 12px 8px}.sn-t{font-size:1.05rem;font-weight:800}
+.sn-x{width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:#fff;font-size:1.5rem;cursor:pointer}.sn-x:hover{background:rgba(255,255,255,.16)}
+.sn-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.sn-i{display:flex;align-items:center;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:#d6edf3;font:600 .95rem/1 var(--font);text-align:left;cursor:pointer}.sn-i:hover:not(:disabled){background:rgba(255,255,255,.13)}.sn-i[aria-current=page]{background:#fff;color:#0b3d4f}.sn-i:disabled{opacity:.5;cursor:not-allowed}
+.sn-f{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.2)}.sn-f p{margin:10px 8px 0;font-size:.8rem;color:#b4d6e1}
+.sidenav :focus-visible,.mbtn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.toasts{position:fixed;right:20px;bottom:20px;z-index:55;display:flex;flex-direction:column;gap:10px;width:min(400px,calc(100vw - 32px));pointer-events:none}
+.toast{position:relative;overflow:hidden;pointer-events:auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:12px 8px 15px 12px;background:#fff;color:#16262c;border:1px solid #d9d4ca;border-radius:12px;box-shadow:0 8px 24px rgba(10,30,40,.2);animation:toastIn .2s ease}
+.toast.out{opacity:0;transform:translateY(6px);transition:opacity .18s,transform .18s}
+.toast .ti{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-top:1px;border-radius:50%;background:#0f7490;color:#fff;font-size:.8rem;font-style:normal}
+.toast.ok .ti,.toast.ok .tp{background:#2e7d4f}.toast.warn .ti,.toast.warn .tp{background:#b26a00}.toast.err .ti,.toast.err .tp{background:#b42318}
+.toast .tt{font-size:.92rem;line-height:1.4;overflow-wrap:anywhere}
+.toast .tx{width:40px;height:40px;margin:-8px 0 0;border:0;border-radius:8px;background:transparent;color:#52646c;font-size:1.25rem;cursor:pointer}.toast .tx:hover{background:#eee9e0}
+.toast .tp{position:absolute;left:0;bottom:0;width:100%;height:3px;background:#0f7490;opacity:.6;transform-origin:left;animation:toastBar linear forwards}
+.toast:hover .tp,.toast:focus-within .tp{animation-play-state:paused}
+@keyframes toastBar{to{transform:scaleX(0)}}@keyframes toastIn{from{opacity:0;transform:translateY(8px)}}
+@media(max-width:640px){.toasts{left:16px;right:16px;bottom:16px;width:auto}}
+.alh{display:flex;align-items:center;gap:10px}.alh::before{content:"!";display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#b42318;color:#fff;font-size:.95rem;font-weight:800}
+.home{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tool .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:inherit}
+.chip{padding:4px 10px;border-radius:999px;background:#e1f1f5;color:#0b4a5e;font-size:.78rem;font-weight:700;font-style:normal;line-height:1.2}.chip.new{background:#fdebd0;color:#7a4a00}
+@media(max-width:700px){.home{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.sidenav{transition:none!important}}
 </style>
 </head>
 <body><a class="skip" href="#workspace">Ir para a área de trabalho</a>
-<header class="top"><div class="wrap bar-top"><button class="logo" id="hdrTitle" type="button"><svg class="mark" viewBox="44 18 168 220" aria-hidden="true" focusable="false"><path d="M72 24H148L204 80V208Q204 232 180 232H76Q52 232 52 208V44Q52 24 72 24Z" fill="#fff"/><path d="M148 24V62Q148 80 166 80H204Z" fill="#9FD3E1"/><path d="M86 122L114 152L86 182M170 122L142 152L170 182" fill="none" stroke="#0E7490" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><path d="M128 118V186" stroke="#F2A33A" stroke-width="12" stroke-linecap="round"/></svg><span class="wm"></span></button><div class="hactions"><!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO. Como não há persistência ao reiniciar a sessão (a lista é apagada ao fechar/recarregar a página), o botão fica invisível e o histórico não é citado na interface nem na ajuda. A função, a tela e o registro em memória foram mantidos como base para uma futura persistência: para reativar, remova a classe "hidden" deste botão e defina HISTORY_ENABLED = true no script. -->
+<header class="top"><div class="wrap bar-top"><div class="hleft"><button class="mbtn" id="menuBtn" type="button" aria-label="Abrir menu de ferramentas" aria-expanded="false" aria-controls="sidenav"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><button class="logo" id="hdrTitle" type="button"><svg class="mark" viewBox="44 18 168 220" aria-hidden="true" focusable="false"><path d="M72 24H148L204 80V208Q204 232 180 232H76Q52 232 52 208V44Q52 24 72 24Z" fill="#fff"/><path d="M148 24V62Q148 80 166 80H204Z" fill="#9FD3E1"/><path d="M86 122L114 152L86 182M170 122L142 152L170 182" fill="none" stroke="#0E7490" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><path d="M128 118V186" stroke="#F2A33A" stroke-width="12" stroke-linecap="round"/></svg><span class="wm"></span></button></div><div class="hactions"><!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO. Como não há persistência ao reiniciar a sessão (a lista é apagada ao fechar/recarregar a página), o botão fica invisível e o histórico não é citado na interface nem na ajuda. A função, a tela e o registro em memória foram mantidos como base para uma futura persistência: para reativar, remova a classe "hidden" deste botão e defina HISTORY_ENABLED = true no script. -->
 <button class="hbtn hidden" id="historyBtn" type="button">Histórico<span class="cnt hidden" id="historyCount"></span></button><button class="hbtn" id="helpBtn" type="button">Como usar</button></div></div></header>
+<div class="scrim hidden" id="navScrim"></div>
+<nav class="sidenav" id="sidenav" aria-label="Ferramentas" aria-hidden="true" inert>
+<div class="sn-h"><span class="sn-t">Ferramentas</span><button class="sn-x" id="navClose" type="button" aria-label="Fechar menu">×</button></div>
+<ul class="sn-l">
+<li><button class="sn-i" type="button" data-nav="home">Início</button></li>
+<li><button class="sn-i" type="button" data-nav="img">Criar novo PDF</button></li>
+<li><button class="sn-i" type="button" data-nav="mrg">Juntar PDFs</button></li>
+<li><button class="sn-i" type="button" data-nav="pdf">Dividir PDF</button></li>
+<li><button class="sn-i" type="button" data-nav="opt">Otimizar PDF</button></li>
+<!-- DECISÃO TÉCNICA: o histórico de downloads está DESATIVADO (sem persistência). O item fica oculto e o código foi mantido; para reativar, remova a classe "hidden" deste item e defina HISTORY_ENABLED = true no script. -->
+<li class="hidden"><button class="sn-i" type="button" data-nav="history">Histórico</button></li>
+</ul>
+<div class="sn-f"><button class="sn-i" type="button" id="navHelp">Como usar</button><p>100% no navegador. Nada é enviado.</p></div>
+</nav>
 <main class="wrap" id="workspace" tabindex="-1" aria-label="Área de trabalho"><div id="operationBar" class="card hidden" role="status" aria-live="polite"><span id="operationText"></span> <button id="operationCancel" type="button" class="sec">Cancelar operação</button></div>
 <div class="head"><div class="crumb"><button class="back hidden" id="back" type="button">← Ferramentas</button></div><h1 id="brand" class="sr-only"></h1><p class="lead" id="lead"></p></div>
 <section class="home" id="home">
-<button class="tool" id="cardImg" type="button"><strong>Criar novo PDF</strong><span>Organize imagens e gere um PDF. Se a compressão não atingir o limite, o download depende da sua autorização explícita.</span><i class="chev">›</i></button>
-<button class="tool" id="cardMrg" type="button"><strong>Juntar PDFs</strong><span>Una vários PDFs em um só, na ordem que você escolher. As páginas são copiadas como estão, sem recompressão e sem alterar o conteúdo.</span><i class="chev">›</i></button>
-<button class="tool" id="cardPdf" type="button"><strong>Dividir PDF existente</strong><span>Confira o tamanho real das partes. Recursos não preserváveis bloqueiam a divisão; originais que já cabem são mantidos intactos.</span><i class="chev">›</i></button>
-<button class="tool" id="cardOpt" type="button"><strong>Otimizar PDF</strong><span>Reduza o tamanho de um PDF existente sem prejudicar a leitura dos prints. O resultado é um arquivo novo; o original permanece intacto.</span><i class="chev">›</i></button>
+<button class="tool" id="cardImg" type="button"><strong>Criar novo PDF</strong><span>Organize prints e comprovantes e gere um PDF dentro do limite de tamanho.<small class="chips"><b class="chip">1, 2 ou 4 por página</b><b class="chip">Limite em MB</b></small></span><i class="chev">›</i></button>
+<button class="tool" id="cardMrg" type="button"><strong>Juntar PDFs</strong><span>Una vários PDFs e reorganize as páginas por arraste, sem recompressão.<small class="chips"><b class="chip new">Novo</b><b class="chip">Prévia das páginas</b><b class="chip">Sem perda</b></small></span><i class="chev">›</i></button>
+<button class="tool" id="cardPdf" type="button"><strong>Dividir PDF existente</strong><span>Separe um PDF grande em partes que cabem no limite de cada anexo.<small class="chips"><b class="chip">Partes equilibradas</b><b class="chip">Sem recompressão</b></small></span><i class="chev">›</i></button>
+<button class="tool" id="cardOpt" type="button"><strong>Otimizar PDF</strong><span>Reduza o tamanho até a meta, com comparação antes e depois.<small class="chips"><b class="chip">Meta em MB</b><b class="chip">Piso de leitura</b></small></span><i class="chev">›</i></button>
 </section>
 <section class="zone" id="zone">
 <h2>Selecione os prints</h2>
@@ -416,7 +459,10 @@ páginas</span></li><li><span><b>Gere</b> o PDF dentro do limite de tamanho</spa
 <p class="muted" id="downloadCount"></p>
 <p class="muted hnote">A lista mostra os downloads que o aplicativo pediu ao navegador; ela não confirma que o arquivo foi salvo. Confira a pasta de downloads antes de enviar. Não é registro de auditoria nem backup, e é apagada ao fechar ou recarregar a página.</p>
 </section></main>
-<p class="status" id="status" role="status" aria-live="polite"></p>
+<p class="sr-only" id="status"></p>
+<div class="toasts" id="toasts" role="region" aria-label="Notificações" aria-live="polite"></div>
+<div class="ov hidden" id="alertDlg" role="alertdialog" aria-modal="true" aria-labelledby="alTitle" aria-describedby="alText"><div class="dlg" style="width:min(480px,100%)"><div class="dlg-h"><h2 class="alh" id="alTitle"></h2></div><div class="dlg-b"><p id="alText" style="margin:14px 0 0;overflow-wrap:anywhere"></p><p class="muted hidden" id="alCode"></p></div><div class="dlg-f"><button class="primary" id="alOk" type="button">Entendi</button></div></div></div>
+<div class="ov hidden" id="confirmDlg" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfText"><div class="dlg" style="width:min(460px,100%)"><div class="dlg-h"><h2 id="cfTitle"></h2></div><div class="dlg-b"><p id="cfText" style="margin:14px 0 4px;overflow-wrap:anywhere"></p></div><div class="dlg-f"><button class="sec" id="cfNo" type="button">Cancelar</button><button class="primary" id="cfYes" type="button">Confirmar</button></div></div></div>
 <div class="lb hidden" id="lb" role="dialog" aria-modal="true" aria-labelledby="lbTitle" aria-describedby="lbCaption"><div class="lightboxPanel"><div class="lightboxHeader"><h2 id="lbTitle">Visualização ampliada</h2><button class="danger" id="lbClose" type="button" aria-label="Fechar ampliação">Fechar ×</button></div><img id="lbImg" alt="Imagem ampliada"/><div class="lightboxFooter"><button class="sec" id="lbPrev" type="button" aria-label="Imagem anterior">← Anterior</button><p id="lbCaption" role="status" aria-live="polite" aria-atomic="true"></p><button class="sec" id="lbNext" type="button" aria-label="Próxima imagem">Próxima →</button></div></div></div>
 <div class="ov hidden" id="help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
 <div class="dlg">
@@ -1077,7 +1123,7 @@ function fmtMB(n,dir){const v=Number(n)/1048576,k=dir==="up"?Math.ceil(v*100-1e-
 const fmtFit=(n,limit)=>fmtMB(n,limit==null?undefined:n>limit?"up":"down");
 function operationCurrent(op){return activeOperation===op&&!op.cancelled;}
 function ensureCurrent(op){if(!operationCurrent(op))throw new TaskError("CANCELLED","Operação cancelada ou substituída.");}
-function denyMutation(){if(modalState&&!activeOperation){msg("Feche o diálogo antes de alterar a seleção.",true);return true;}if(!activeOperation)return false;msg("Conclua ou cancele a operação atual antes de alterar a seleção ou configuração.",true);return true;}
+function denyMutation(){if(modalState&&!activeOperation){warn("Feche o diálogo antes de alterar a seleção.");return true;}if(!activeOperation)return false;warn("Conclua ou cancele a operação atual antes de alterar a seleção ou configuração.");return true;}
 function syncOperationControls(){
  const locked=!!activeOperation,stage=activeOperation?.stage;
  for(const id of ["selectBtn","addBtn","clearBtn","fileInput","ipp","limit","spLimit","maxAtt","spBal","spClear","cardImg","cardPdf","back","hdrTitle","helpBtn","historyBtn","cardOpt","optBtn","optRun","optClear","optSave","optTarget"])$(id).disabled=locked;
@@ -1091,7 +1137,7 @@ function syncOperationControls(){
  document.querySelectorAll("#spParts button").forEach(b=>b.disabled=locked||!splitPlan||!!splitPlan.overPages.length);
  document.querySelectorAll("#grid button").forEach(b=>b.disabled=locked);
  document.querySelectorAll("#grid .card").forEach(c=>c.draggable=!locked);
- $("clearDownloads").disabled=locked;optRefresh();$("clearBtn").disabled=locked||!items.length; if(locked)genBtn.disabled=true; mgSync();
+ $("clearDownloads").disabled=locked;optRefresh();$("clearBtn").disabled=locked||!items.length; if(locked)genBtn.disabled=true; mgSync(); navSync();
 }
 function beginOperation(stage,label="",snapshot=null){if(activeOperation)throw new TaskError("BUSY","Já existe uma operação em andamento.");const op={id:++operationSequence,stage,label,snapshot,returnFocus:focusToken(),cancelled:false,cancelHandlers:new Set()};activeOperation=op;syncOperationControls();if(!modalState)opCancelButton().focus();return op;}
 function operationStage(op,stage){ensureCurrent(op);op.stage=stage;syncOperationControls();}
@@ -1100,7 +1146,7 @@ function cancelOperation(reason="Operação cancelada. Nenhum novo download ser�
  const op=activeOperation;if(!op)return;op.cancelled=true;for(const fn of [...op.cancelHandlers])fn();op.cancelHandlers.clear();if(overResolve)overResolve(false);if(op.stage==="generating"||op.stage==="confirming"){genCancel=true;busy=false;progClose();}
  activeOperation=null;syncOperationControls();render();if(!modalState)restoreFocus(op.returnFocus);msg(reason+" Downloads já solicitados não são desfeitos.");op.reported=true;
 }
-function showOperationError(op,e){if(activeOperation&&activeOperation!==op||op?.reported)return;if(modalState?.id==="prog")progClose();const titles={CANCELLED:"Cancelado",TIMEOUT:"Prazo técnico excedido",RESOURCE_LIMIT:"Limite técnico excedido",UNSUPPORTED_PDF:"Recurso PDF não suportado",ENCRYPTED_PDF:"PDF protegido",INVALID_PDF:"Estrutura PDF inválida",INVALID_INPUT:"Entrada inválida",CAPABILITY:"Navegador incompatível",WORKER_UNAVAILABLE:"Worker indisponível",IMAGE_DECODE:"Imagem não lida",INTERNAL:"Falha interna"};msg(`[${e.code||"INTERNAL"}] ${titles[e.code]||"Falha"}: ${e.code?e.message:"Não foi possível concluir; nenhuma saída foi liberada."}`,true);}
+function showOperationError(op,e){if(activeOperation&&activeOperation!==op||op?.reported)return;if(modalState?.id==="prog")progClose();const titles={CANCELLED:"Cancelado",TIMEOUT:"Prazo técnico excedido",RESOURCE_LIMIT:"Limite técnico excedido",UNSUPPORTED_PDF:"Recurso PDF não suportado",ENCRYPTED_PDF:"PDF protegido",INVALID_PDF:"Estrutura PDF inválida",INVALID_INPUT:"Entrada inválida",CAPABILITY:"Navegador incompatível",WORKER_UNAVAILABLE:"Worker indisponível",IMAGE_DECODE:"Imagem não lida",INTERNAL:"Falha interna"};{const code=e.code||"INTERNAL",title=titles[e.code]||"Falha",body=e.code?e.message:"Não foi possível concluir; nenhuma saída foi liberada.";statusEl.textContent=`[${code}] ${title}: ${body}`;showAlert(body,title,code);}}
 function workerJob(op,kind,data,onProgress=()=>{}){
  ensureCurrent(op);return new Promise((resolve,reject)=>{let worker,url,timer,settled=false;
  const finish=(err,result)=>{if(settled)return;settled=true;clearTimeout(timer);op.cancelHandlers.delete(abort);if(worker)worker.terminate();if(url)URL.revokeObjectURL(url);err?reject(err):resolve(result);};
@@ -1126,7 +1172,66 @@ if (text !== undefined) e.textContent = text;
 return e;
 }
 const limitBytes=()=>getImageLimit();
-function msg(text, isErr) { statusEl.textContent = text || ''; statusEl.classList.toggle('err', !!isErr); }
+/* ---------- Notificações: avisos rápidos em fila (cada um com seu tempo) e alertas/confirmações em pop-up ---------- */
+const TOAST_MAX=3,toastQueue=[],toastLive=new Set(),alertQueue=[];
+let alertOpen=false,confirmResolve=null,lastAlertKey="";
+const toastMs=t=>Math.min(9000,Math.max(4000,3200+String(t).length*45));
+const toastKind=t=>/solicitad|adicionad|gerad|conclu|restaurad|removid|limp|substitu/i.test(t)?"ok":"info";
+function toast(text,opts={}){
+ const kind=opts.kind||toastKind(text),ms=opts.ms||toastMs(text),dup=[...toastLive].find(t=>t.text===text);
+ if(dup){toastRestart(dup);return;}if(toastQueue.some(t=>t.text===text))return;
+ toastQueue.push({text,kind,ms});toastPump();
+}
+function toastPump(){while(toastLive.size<TOAST_MAX&&toastQueue.length)toastOpen(toastQueue.shift());}
+function toastOpen(t){
+ const n=document.createElement("div"),ic=document.createElement("b"),tx=document.createElement("span"),x=document.createElement("button"),bar=document.createElement("i");
+ n.className="toast "+t.kind;ic.className="ti";ic.setAttribute("aria-hidden","true");ic.textContent=t.kind==="ok"?"✓":t.kind==="info"?"i":"!";
+ tx.className="tt";tx.textContent=t.text;x.type="button";x.className="tx";x.setAttribute("aria-label","Fechar notificação");x.textContent="×";
+ bar.className="tp";bar.style.animationDuration=t.ms+"ms";n.append(ic,tx,x,bar);
+ t.node=n;t.bar=bar;t.remaining=t.ms;t.timer=0;t.ret=focusToken();toastLive.add(t);$("toasts").append(n);
+ t.run=()=>{if(t.timer)return;t.t0=Date.now();t.timer=setTimeout(()=>toastClose(t),Math.max(50,t.remaining));};
+ t.halt=()=>{if(!t.timer)return;clearTimeout(t.timer);t.timer=0;t.remaining-=Date.now()-t.t0;};
+ n.addEventListener("mouseenter",t.halt);n.addEventListener("mouseleave",()=>{if(!n.contains(document.activeElement))t.run();});
+ n.addEventListener("focusin",t.halt);n.addEventListener("focusout",()=>{if(!n.matches(":hover"))t.run();});
+ x.onclick=()=>{toastClose(t);restoreFocus(t.ret);};t.run();
+}
+function toastRestart(t){t.halt();t.remaining=t.ms;t.bar.style.animation="none";void t.bar.offsetWidth;t.bar.style.animation="";t.bar.style.animationDuration=t.ms+"ms";if(!t.node.matches(":hover")&&!t.node.contains(document.activeElement))t.run();}
+function toastClose(t){if(!toastLive.has(t))return;clearTimeout(t.timer);t.timer=0;toastLive.delete(t);t.node.classList.add("out");setTimeout(()=>{t.node.remove();toastPump();},180);}
+function showAlert(text,title="Atenção",code=""){
+ const key=title+"|"+text;if(alertQueue.some(a=>a.key===key)||(alertOpen&&lastAlertKey===key))return;
+ if(modalState&&!alertOpen){toast(text,{kind:"err",ms:9000});return;} /* nunca empilha pop-ups sobre outro diálogo */
+ alertQueue.push({key,title,text,code});alertPump();
+}
+function alertPump(){if(alertOpen||modalState||!alertQueue.length)return;const a=alertQueue.shift();alertOpen=true;lastAlertKey=a.key;
+ $("alTitle").textContent=a.title;$("alText").textContent=a.text;const c=$("alCode");c.textContent=a.code?"Código técnico: "+a.code:"";c.classList.toggle("hidden",!a.code);openManagedDialog("alertDlg","alOk",alertClose);}
+function alertClose(){if(!alertOpen)return;alertOpen=false;closeManagedDialog("alertDlg");alertPump();}
+function askConfirm({title="Confirmar",text,yes="Confirmar",no="Cancelar",danger=false}){
+ return new Promise(res=>{if(modalState||confirmResolve){res(false);return;}confirmResolve=res;
+  $("cfTitle").textContent=title;$("cfText").textContent=text;$("cfYes").textContent=yes;$("cfYes").className=danger?"danger":"primary";$("cfNo").textContent=no;
+  openManagedDialog("confirmDlg","cfNo",()=>confirmDone(false));});
+}
+function confirmDone(v){const r=confirmResolve;if(!r)return;confirmResolve=null;closeManagedDialog("confirmDlg");r(v);}
+/* warn(): aviso passageiro (ex.: ação bloqueada enquanto há operação em andamento); não interrompe com pop-up. */
+function warn(text){statusEl.textContent=text;toast(text,{kind:"warn",ms:6000});}
+/* msg(): erros viram pop-up; o restante vira notificação temporária em fila. O #status (oculto) guarda o último texto. */
+function msg(text, isErr) { statusEl.textContent = text || ''; if (!text) return; if (isErr) showAlert(text); else toast(text); }
+/* ---------- Menu lateral recolhível (sanduíche) ---------- */
+const navEl=$("sidenav");let navIsOpen=false;
+function navSet(open,restore=true){
+ if(open===navIsOpen)return;navIsOpen=open;navEl.classList.toggle("open",open);navEl.inert=!open;navEl.setAttribute("aria-hidden",String(!open));$("navScrim").classList.toggle("hidden",!open);
+ $("menuBtn").setAttribute("aria-expanded",String(open));$("menuBtn").setAttribute("aria-label",open?"Fechar menu de ferramentas":"Abrir menu de ferramentas");
+ for(const n of [$("workspace"),$("hdrTitle"),document.querySelector(".hactions")])n.inert=open;
+ if(open){const t=navEl.querySelector("[aria-current=page]:not(:disabled)")||navEl.querySelector("button:not(:disabled)");(t||$("navClose")).focus();}else if(restore)$("menuBtn").focus();
+}
+function navSync(){const locked=!!activeOperation;document.querySelectorAll("#sidenav [data-nav]").forEach(b=>{b.disabled=locked;if(b.dataset.nav===mode)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});}
+$("menuBtn").onclick=()=>navSet(!navIsOpen);$("navClose").onclick=()=>navSet(false);$("navScrim").onclick=()=>navSet(false);
+navEl.addEventListener("click",e=>{const b=e.target.closest("[data-nav]");if(!b)return;const m=b.dataset.nav;navSet(false,false);if(m===mode){$("workspace").focus();return;}
+ if(m==="history"){$("historyBtn").click();return;}if(activeOperation||denyMutation())return;setMode(m);$("workspace").focus();});
+$("navHelp").onclick=()=>{navSet(false,false);$("helpBtn").click();};
+document.addEventListener("keydown",e=>{if(!navIsOpen||modalState)return;
+ if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();navSet(false);return;}
+ if(e.key==="Tab"){const L=[$("menuBtn"),...navEl.querySelectorAll("button:not(:disabled)")],i=L.indexOf(document.activeElement);e.preventDefault();e.stopImmediatePropagation();L[e.shiftKey?(i<=0?L.length-1:i-1):(i<0||i===L.length-1?0:i+1)].focus();}},true);
+$("alOk").onclick=alertClose;$("cfYes").onclick=()=>confirmDone(true);$("cfNo").onclick=()=>confirmDone(false);
 const isImg=f=>/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name)||/^image\/(jpeg|png|gif|webp|bmp|avif)$/.test(f.type);
 const revoke = (u) => { if (u) URL.revokeObjectURL(u); };
 /* ---------- gerador mínimo de PDF (JPEG/DCTDecode) ---------- */
@@ -1175,9 +1280,10 @@ async function addFiles(fileList){
 }
 
 /* Stable actions declared with cards. */
-function clearAll() {
+async function clearAll() {
 if(denyMutation())return;
-if (!items.length || !window.confirm('Deseja remover todas as imagens selecionadas?')) return;
+if (!items.length) return;
+if (!(await askConfirm({title:'Remover todas as imagens?',text:'Deseja remover todas as imagens selecionadas? Os arquivos no computador não serão excluídos.',yes:'Remover tudo',danger:true}))) return;
 items.forEach((i) => { revoke(i.url); revoke(i.thumb); });
 items.length=0;changed();$("selectBtn").focus();msg("Seleção de imagens limpa. Arquivos originais não foram excluídos.");
 }
@@ -1245,7 +1351,7 @@ function changed(){imageRevision++;lastPdfSize=0;render();}
 function schedule() { cancelAnimationFrame(raf); raf = requestAnimationFrame(changed); }
 /* ---------- geração do PDF ---------- */
 async function generate(){
- if(denyMutation())return;if(!items.length||items.some(i=>!i.w||!i.h)){msg("Aguarde a leitura das imagens antes de gerar.",true);return;}
+ if(denyMutation())return;if(!items.length||items.some(i=>!i.w||!i.h)){warn("Aguarde a leitura das imagens antes de gerar.");return;}
  let op;try{const snapshot=currentImageSnapshot();op=beginOperation("generating",`${items.length} imagem(ns)`,snapshot);busy=true;render();const tries=[[200,0.88],[200,0.8],[160,0.8],[160,0.72],[130,0.72],[110,0.65]];progOpen(tries,snapshot.limit);msg("");
  const {pdf}=await workerJob(op,"generate",{pages:snapshot.pages,limit:snapshot.limit},m=>{if(m.stage==="try")progTry(m.k,m.state,m.text);else {progBar(m.done||0,m.total||1,m.text);$("operationText").textContent=m.text;}});
  checkImageSnapshot(op);progBar(1,1,"Arquivo montado; conferindo antes do download…");await cancellablePause(op,500);checkImageSnapshot(op);progClose();lastPdfSize=pdf.length;
@@ -1346,7 +1452,7 @@ function renderDownloadRequests(){
  $("clearDownloads").disabled=!!activeOperation||!downloadRequests.length;
 }
 function recordDownloadRequest(name,bytes){downloadSequence++;downloadRequests.push({seq:downloadSequence,name,bytes,kind:({pdf:"Dividir PDF",opt:"Otimizar PDF",mrg:"Juntar PDFs"})[mode]||"Criar PDF",at:new Date()});if(downloadRequests.length>50)downloadRequests.shift();renderDownloadRequests();}
-function clearDownloadRequests(){if(denyMutation())return;if(!downloadRequests.length)return;if(!window.confirm("Limpar o histórico desta sessão? Os arquivos já baixados não serão excluídos."))return;downloadRequests=[];downloadSequence=0;renderDownloadRequests();msg("Histórico limpo. Nenhum arquivo salvo no computador foi excluído.");restoreFocus({id:"historyBtn"});}
+async function clearDownloadRequests(){if(denyMutation())return;if(!downloadRequests.length)return;if(!(await askConfirm({title:"Limpar o histórico?",text:"Limpar o histórico desta sessão? Os arquivos já baixados não serão excluídos.",yes:"Limpar",danger:true})))return;downloadRequests=[];downloadSequence=0;renderDownloadRequests();msg("Histórico limpo. Nenhum arquivo salvo no computador foi excluído.");restoreFocus({id:"historyBtn"});}
 function saveBytes(bytes,name){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));try{a.href=url;a.download=name;document.body.append(a);a.click();recordDownloadRequest(name,bytes.length);}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}}
 
 /* ---------- modo "Dividir um PDF grande": interface ---------- */
@@ -1402,10 +1508,10 @@ function applySplitPlan(source,result,options){
 
 }
 async function loadPdf(file){
- if(modalState){msg("Feche o diálogo antes de importar um PDF.",true);return;}if(!file)return;
+ if(modalState){warn("Feche o diálogo antes de importar um PDF.");return;}if(!file)return;
  if(activeOperation&&!["loading-pdf","planning"].includes(activeOperation.stage)){denyMutation();return;}
  let options;try{inputGuard(file.size);options=readSplitOptions();}catch(e){showOperationError(null,e);return;}
- if((spDoc||activeOperation)&&!window.confirm("Substituir a seleção de PDF ou leitura atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada."))return;
+ if((spDoc||activeOperation)&&!(await askConfirm({title:"Substituir o PDF?",text:"Substituir a seleção de PDF ou leitura atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada.",yes:"Substituir"})))return;
  if(activeOperation)cancelOperation("Leitura anterior substituída pela nova seleção confirmada.");
  const source=Object.freeze({file,name:file.name.replace(/\.pdf$/i,""),originalName:file.name,size:file.size});const previous=spDoc;const op=beginOperation("loading-pdf",source.originalName,{options});loadOpenPdf(source.originalName);
  try{setMode("pdf",true);const result=await workerJob(op,"pdf",{file,options},m=>{$("loadLine").textContent=source.originalName+" · "+m.text;});ensureCurrent(op);
@@ -1428,13 +1534,13 @@ function checkedSplitPlan(){
  if(splitPlan.overPages.length||splitPlan.parts.some(p=>p.bytes.length>splitPlan.limit))throw new TaskError("INVALID_INPUT","Página acima do limite; nenhum download deste plano é permitido.");return splitPlan;
 }
 function downloadSplitPart(part){if(denyMutation())return;let op;try{const plan=checkedSplitPlan();if(!plan.parts.includes(part))throw new TaskError("INVALID_INPUT","Parte de um plano antigo.");op=beginOperation("downloading",part.name,{plan});if(checkedSplitPlan()!==plan)throw new TaskError("CANCELLED","Plano mudou.");safeSave(op,part.bytes,part.name);msg("Download solicitado: "+part.name+" · "+fmtMB(part.bytes.length)+". Confira no navegador; gravação não confirmada.");}catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}}
-async function downloadAllSplitParts(){if(denyMutation())return;let op;let sent=0;try{const plan=checkedSplitPlan();if(plan.exceedsAttachments&&!window.confirm(`Este plano tem ${plan.parts.length} partes, acima de ${plan.maxAttachments} anexos. Solicitar o lote mesmo assim?`))return;
+async function downloadAllSplitParts(){if(denyMutation())return;let op;let sent=0;try{const plan=checkedSplitPlan();if(plan.exceedsAttachments&&!(await askConfirm({title:"Muitas partes",text:`Este plano tem ${plan.parts.length} partes, acima de ${plan.maxAttachments} anexos. Solicitar o lote mesmo assim?`,yes:"Solicitar lote"})))return;
  const batch=Object.freeze(plan.parts.slice());op=beginOperation("downloading",`${batch.length} arquivos`,{plan,batch});
  for(let i=0;i<batch.length;i++){ensureCurrent(op);if(checkedSplitPlan()!==plan)throw new TaskError("CANCELLED","Plano mudou; restante do lote bloqueado.");const part=batch[i];safeSave(op,part.bytes,part.name);sent++;$("operationText").textContent=`Downloads solicitados: ${sent}/${batch.length}`;if(i+1<batch.length)await cancellablePause(op,500);}
  msg(`${sent} download(s) solicitado(s). Confira os arquivos salvos; o navegador pode bloquear downloads múltiplos.`);
  }catch(e){showOperationError(op,e);}finally{if(op)endOperation(op);}}
-function clearSplitPdf(){if(denyMutation())return;if(spDoc&&!window.confirm("Descartar a seleção de PDF e o plano atual? O arquivo no computador não será excluído."))return;spDoc=null;++splitRevision;resetSplitOutput();msg("");setMode("pdf");}
-function routeFiles(list){if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}const fs=Array.from(list||[]);if(!fs.length)return;const pdfs=fs.filter(f=>f.type==="application/pdf"||/\.pdf$/i.test(f.name));if(mode==="mrg"){if(!pdfs.length||pdfs.length!==fs.length){msg("Nesta ferramenta selecione somente PDFs. Nenhum arquivo da seleção foi importado.",true);return;}addMergePdfs(fs);return;}if(pdfs.length&&(pdfs.length!==1||fs.length!==1)){msg("Selecione exatamente 1 PDF por vez, sem misturar imagens. Nenhum arquivo da seleção foi importado.",true);return;}if(pdfs.length){if(mode==="opt")loadOpt(pdfs[0]);else loadPdf(pdfs[0]);return;}if(denyMutation())return;setMode("img");addFiles(fs);}
+async function clearSplitPdf(){if(denyMutation())return;if(spDoc&&!(await askConfirm({title:"Descartar o PDF?",text:"Descartar a seleção de PDF e o plano atual? O arquivo no computador não será excluído.",yes:"Descartar",danger:true})))return;spDoc=null;++splitRevision;resetSplitOutput();msg("");setMode("pdf");}
+function routeFiles(list){if(modalState){warn("Feche o diálogo antes de importar arquivos.");return;}const fs=Array.from(list||[]);if(!fs.length)return;const pdfs=fs.filter(f=>f.type==="application/pdf"||/\.pdf$/i.test(f.name));if(mode==="mrg"){if(!pdfs.length||pdfs.length!==fs.length){msg("Nesta ferramenta selecione somente PDFs. Nenhum arquivo da seleção foi importado.",true);return;}addMergePdfs(fs);return;}if(pdfs.length&&(pdfs.length!==1||fs.length!==1)){msg("Selecione exatamente 1 PDF por vez, sem misturar imagens. Nenhum arquivo da seleção foi importado.",true);return;}if(pdfs.length){if(mode==="opt")loadOpt(pdfs[0]);else loadPdf(pdfs[0]);return;}if(denyMutation())return;setMode("img");addFiles(fs);}
 
 /* ---------- módulo "Otimizar PDF": interface (o processamento roda no worker; Criar e Dividir não são afetados) ---------- */
 let optUrls=[],cmpSync=false;
@@ -1494,10 +1600,10 @@ function showOptResult(){
 }
 function optResetResult(){optOut=null;optRes=null;showOptResult();if(optScanRes)buildOptTable();optRefresh();}
 async function loadOpt(file){
- if(modalState){msg("Feche o diálogo antes de importar um PDF.",true);return;}if(!file)return;
+ if(modalState){warn("Feche o diálogo antes de importar um PDF.");return;}if(!file)return;
  if(activeOperation&&activeOperation.stage!=="loading-pdf"){denyMutation();return;}
  try{inputGuard(file.size);}catch(e){showOperationError(null,e);return;}
- if((optDoc||activeOperation)&&!window.confirm("Substituir o PDF atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada."))return;
+ if((optDoc||activeOperation)&&!(await askConfirm({title:"Substituir o PDF?",text:"Substituir o PDF atual? O documento anterior será mantido se a nova leitura falhar ou for cancelada.",yes:"Substituir"})))return;
  if(activeOperation)cancelOperation("Leitura anterior substituída pela nova seleção confirmada.");
  const source=Object.freeze({file,name:file.name.replace(/\.pdf$/i,""),originalName:file.name,size:file.size}),previous=optDoc,op=beginOperation("loading-pdf",source.originalName);loadOpenPdf(source.originalName);
  try{setMode("opt",true);const result=await workerJob(op,"optscan",{file},m=>{$("loadLine").textContent=source.originalName+" · "+m.text;});ensureCurrent(op);
@@ -1590,11 +1696,11 @@ function mgRemove(it){if(denyMutation())return;const files=mgFileOrder(),i=files
  mgOrder=mgOrder.filter(o=>o.f!==it.id);mgRevoke(it);mgItems.splice(mgItems.indexOf(it),1);mgRender();
  const left=mgFileOrder();if(left.length)restoreFocus({key:left[Math.min(i,left.length-1)].id+":remove"});else $("mgSelect").focus();
  msg(`${it.name}: removido. ${left.length} PDF(s) na seleção.`);}
-function mgResetOrder(){if(denyMutation())return;const nat=mgNatural();if(JSON.stringify(nat)===JSON.stringify(mgOrder)){msg("A ordem das páginas já é a original.");return;}
- if(!window.confirm("Restaurar a ordem original? As páginas voltam à ordem de cada arquivo, agrupadas por arquivo."))return;mgOrder=nat;mgRender();msg("Ordem original restaurada.");}
-function mgClearAll(){if(denyMutation())return;if(!mgItems.length)return;if(!window.confirm("Remover todos os PDFs da seleção? Os arquivos no computador não serão excluídos."))return;mgItems.forEach(mgRevoke);mgItems=[];mgOrder=[];mgRender();msg("");$("mgSelect").focus();}
+async function mgResetOrder(){if(denyMutation())return;const nat=mgNatural();if(JSON.stringify(nat)===JSON.stringify(mgOrder)){msg("A ordem das páginas já é a original.");return;}
+ if(!(await askConfirm({title:"Restaurar a ordem original?",text:"As páginas voltam à ordem de cada arquivo, agrupadas por arquivo.",yes:"Restaurar"})))return;mgOrder=nat;mgRender();msg("Ordem original restaurada.");}
+async function mgClearAll(){if(denyMutation())return;if(!mgItems.length)return;if(!(await askConfirm({title:"Remover todos os PDFs?",text:"Remover todos os PDFs da seleção? Os arquivos no computador não serão excluídos.",yes:"Remover tudo",danger:true})))return;mgItems.forEach(mgRevoke);mgItems=[];mgOrder=[];mgRender();msg("");$("mgSelect").focus();}
 async function addMergePdfs(list){
- if(modalState){msg("Feche o diálogo antes de importar arquivos.",true);return;}
+ if(modalState){warn("Feche o diálogo antes de importar arquivos.");return;}
  if(denyMutation())return;const files=Array.from(list||[]);if(!files.length)return;let op;
  try{
   if(files.some(f=>!(f.type==="application/pdf"||/\.pdf$/i.test(f.name))))throw new TaskError("INVALID_INPUT","Selecione somente arquivos PDF. Nenhum arquivo deste lote foi adicionado.");
@@ -1612,7 +1718,7 @@ async function addMergePdfs(list){
  finally{if(op)endOperation(op);mgRender();}
 }
 async function mgRunMerge(){
- if(denyMutation())return;if(mgFileOrder().length<2){msg("Adicione pelo menos 2 PDFs para juntar.",true);return;}
+ if(denyMutation())return;if(mgFileOrder().length<2){warn("Adicione pelo menos 2 PDFs para juntar.");return;}
  const batch=mgItems.slice(),snap=JSON.stringify(mgOrder),order=mgOrder.map(o=>[batch.indexOf(mgFile(o.f)),o.p]),expected=mgOrder.length,op=beginOperation("merging",`${batch.length} arquivos`);
  try{
   const result=await workerJob(op,"mergerun",{files:batch.map(i=>i.file),order},m=>{$("operationText").textContent="Juntando PDFs · "+m.text;});ensureCurrent(op);

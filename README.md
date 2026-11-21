@@ -11,7 +11,7 @@ Aplicação web offline para organizar imagens, juntar e dividir PDFs e reduzir 
 
 Teste online: [abrir no GitHub Pages](https://guistelmach.github.io/OptimizerPDF/)
 
-Versão atual: 1.11.0  
+Versão atual: 1.12.0  
 Autor: Guilherme Medeiros Stelmach (Gui Stelmach)
 
 ---
@@ -46,6 +46,9 @@ O projeto é entregue em um único arquivo HTML com JavaScript e CSS puros, sem 
 - Ajuste automático de qualidade e resolução para respeitar um limite em MB.
 - Confirmação explícita antes de baixar um PDF acima do limite.
 - União de vários PDFs em um único arquivo, sem recompressão: texto, imagens e layout das páginas são copiados como estão.
+- Menu lateral recolhível (ícone de sanduíche no cabeçalho) para trocar de ferramenta de qualquer tela, com navegação por teclado e fechamento com `Esc`.
+- Erros e confirmações (limpar lista, substituir arquivo, descartar seleção) em pop-ups próprios, no lugar das caixas nativas do navegador.
+- Notificações rápidas ("download solicitado", "imagens adicionadas") em fila: cada uma tem seu tempo de exibição, some sozinha, pausa ao passar o mouse e pode ser fechada manualmente.
 - Pré-visualização em miniaturas de todas as páginas dos PDFs a juntar, com reorganização página a página por arraste (ou pelos botões ↑ e ↓) antes de gerar o arquivo final.
 - Divisão de PDF existente em partes com limite por parte e máximo de anexos.
 - Preservação do original quando o arquivo já cabe no limite.
@@ -219,6 +222,7 @@ O app depende de recursos do navegador como `createImageBitmap`, `canvas.toBlob`
 
 | Versão | Mudanças principais |
 |---|---|
+| 1.12.0 | Novo layout: menu lateral recolhível, cartões da tela inicial com selos, erros e confirmações em pop-up e notificações temporárias em fila. O histórico segue desativado e oculto, com o código preservado. |
 | 1.11.0 | Juntar PDFs com pré-visualização em miniaturas e reorganização página a página por arraste, com botões ↑ ↓ como alternativa e restauração da ordem original. |
 | 1.10.0 | Novo módulo Juntar PDFs: une vários PDFs em um só, na ordem escolhida, sem recompressão, com conferência do resultado antes do download. |
 | 1.9.1 | Nova identidade visual: logo no cabeçalho, favicon e pasta `assets/`. |
